@@ -17,15 +17,11 @@ def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
     epoch_t0 = time()
     for batch_idx, (data, target) in enumerate(train_loader):
-        t0 = time()
         X, Ra = data['X'].to(device), data['Ra'].to(device)
         Ri, Ro = data['Ri'].to(device), data['Ro'].to(device)
         target = target.to(device)
-        #print("data transfer time:", time()-t0)
         optimizer.zero_grad()
-        t0 = time()
         output = model(X, Ra.float(), Ri.float(), Ro.float())
-        #print("inference time:", time()-t0)
         loss = F.binary_cross_entropy(output.squeeze(2), target)
         loss.backward()
         optimizer.step()
@@ -35,7 +31,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
                 100. * batch_idx / len(train_loader), loss.item()))
             if args.dry_run:
                 break
-    print("epoch took:", time()-epoch_t0)
+    print("epoch time: {0}s".format(time()-epoch_t0))
 
 def test(model, device, test_loader):
     model.eval()
@@ -98,7 +94,6 @@ def main():
     torch.manual_seed(args.seed)
 
     device = torch.device("cuda" if use_cuda else "cpu")
-    #device = "cpu"
 
     train_kwargs = {'batch_size': args.batch_size}
     test_kwargs = {'batch_size': args.test_batch_size}
@@ -109,7 +104,7 @@ def main():
         train_kwargs.update(cuda_kwargs)
         test_kwargs.update(cuda_kwargs)
 
-    graph_indir = "/scratch/gpfs/jdezoort/hitgraphs/IN_LP_ExaTrkX_1/"
+    graph_indir = "/scratch/gpfs/jdezoort/hitgraphs/IN_LP_ExaTrkX_{}/".format(args.pt)
     #graph_indir = "/tigress/jdezoort/IN_samples_endcaps/IN_LP_{}/".format(args.pt)
     graph_files = np.array(os.listdir(graph_indir))
     n_graphs = len(graph_files)
