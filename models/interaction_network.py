@@ -70,7 +70,7 @@ class InteractionNetwork(nn.Module):
         # re-marshalling step: build new interaction terms
         Xi_tilde = torch.bmm(Ri, X_tilde)
         Xo_tilde = torch.bmm(Ro, X_tilde)
-        m2 = torch.cat([Xi_tilde, Xo_tilde, Ra], dim=2)
+        m2 = torch.cat([Xi_tilde, Xo_tilde, E], dim=2)
 
         W = torch.sigmoid(self.phi_R2(m2))
         #W = torch.sigmoid(self.phi_R1(m2))
