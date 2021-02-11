@@ -64,9 +64,9 @@ def validate(model, device, val_loader):
     #print("best_tpr", best_tpr, "\nbest_tnr", best_tnr)
     #print("diff=", diff, "\nbest_disc=", best_disc)
     #print("accuracy=", (N_tp+N_tn)/(N_tp+N_tn+N_fp+N_fn))
-    print(np.mean(best_discs))
+    return np.mean(best_discs)
    
-def test(model, device, test_loader):
+def test(model, device, test_loader, disc=0.5):
     model.eval()
     test_loss = 0
     accuracy = 0
@@ -81,9 +81,9 @@ def test(model, device, test_loader):
             N_total = target.shape[1]
             #print(N_correct.item(), '/', N_total)
             accuracy += torch.sum(((target==1).squeeze() & 
-                                   (output>0.5).squeeze()) |
+                                   (output>disc).squeeze()) |
                                   ((target==0).squeeze() & 
-                                   (output<0.5).squeeze())).float()/target.shape[1]
+                                   (output<disc).squeeze())).float()/target.shape[1]
             test_loss += F.binary_cross_entropy(output.squeeze(2), target, 
                                                 reduction='mean').item() 
 
@@ -146,9 +146,9 @@ def main():
 
     IDs = np.arange(n_graphs)
     np.random.shuffle(IDs)
-    partition = {'train': graph_files[IDs[:100]],  
-                 'test':  graph_files[IDs[800:1000]],
-                 'val': graph_files[IDs[1000:1200]]}
+    partition = {'train': graph_files[IDs[:1000]],  
+                 'test':  graph_files[IDs[1000:1100]],
+                 'val': graph_files[IDs[1100:1500]]}
     
     params = {'batch_size': 1, 'shuffle': True, 'num_workers': 6}
     train_set = Dataset(graph_indir, partition['train']) 
@@ -164,8 +164,8 @@ def main():
 
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
-        #validate(model, device, val_loader)
-        test(model, device, test_loader)
+        disc = validate(model, device, val_loader)
+        test(model, device, test_loader, disc=disc)
         #scheduler.step()
     
         if args.save_model:

@@ -120,16 +120,22 @@ def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
                                                      remove_intersecting_edges=remove_intersecting_edges)
         
         segments.append(selected)
-        seg_dr.extend(dr.squeeze().to_list())
-        seg_dphi.extend(dphi.squeeze().to_list())
-        seg_dz.extend(dz.squeeze().to_list())
-        seg_dR.extend(dR.squeeze().to_list())
+        seg_dr.append(dr)
+        seg_dphi.append(dphi)
+        seg_dz.append(dz)
+        seg_dR.append(dR)
+        #seg_dr.extend(list(dr.squeeze())#dr.squeeze().to_list())
+        #seg_dphi.extend(list(dphi.squeeze())#dphi.squeeze().to_list())
+        #seg_dz.extend(#dz.squeeze().to_list())
+        #seg_dR.extend(#dR.squeeze().to_list())
         
         #pid1 = hits.particle_id.loc[selected.index_1].values
         #pid2 = hits.particle_id.loc[selected.index_2].values
         
     # Combine segments from all layer pairs
     segments = pd.concat(segments)
+    seg_dr, seg_dphi = pd.concat(seg_dr), pd.concat(seg_dphi)
+    seg_dz, seg_dR = pd.concat(seg_dz), pd.concat(seg_dR)
 
     # Prepare the graph matrices
     n_hits = hits.shape[0]
@@ -139,6 +145,7 @@ def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
                    seg_dphi/feature_scale[1], 
                    seg_dz/feature_scale[2], 
                    seg_dR))
+    print(Ra)
     #Ra = np.zeros(n_edges)
     Ri = np.zeros((n_hits, n_edges), dtype=np.uint8)
     Ro = np.zeros((n_hits, n_edges), dtype=np.uint8)
