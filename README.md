@@ -18,4 +18,7 @@
   - dataset.py: custom data loader for multi-threaded graph loading (necessary for large graphs)
   - track_fitter.py: class to fit hits in conformal space 
   
-- run_interaction_network.py: IN training script 
+- run_interaction_network.py: IN training script, example usage:
+  ```
+  python run_interaction_network.py --pt=1 --construction=heptrkx_plus --lr=0.01 --gamma=0.5 --save-model 
+  ```
