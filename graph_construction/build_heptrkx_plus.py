@@ -357,7 +357,7 @@ def main():
 
     # Load configuration
     with open(args.config) as f:
-        config = yaml.load(f)
+        config = yaml.load(f, yaml.FullLoader)
     if args.task == 0:
         logging.info('Configuration: %s' % config)
 
