@@ -92,7 +92,6 @@ def test(model, device, test_loader, disc=0.5):
     print('\nTest set: Average loss: {:.4f}\n, Accuracy: {:.4f}\n'
           .format(test_loss, accuracy))
 
-
 def main():
 
     # Training settings
@@ -147,9 +146,11 @@ def main():
     IDs = np.arange(n_graphs)
     np.random.shuffle(IDs)
     partition = {'train': graph_files[IDs[:1000]],  
-                 'test':  graph_files[IDs[1000:1100]],
-                 'val': graph_files[IDs[1100:1500]]}
+                 'test':  graph_files[IDs[1000:1400]],
+                 'val': graph_files[IDs[1400:1500]]}
     
+    print(len(np.unique(np.concatenate((partition['train'], partition['test'], partition['val'])))))
+
     params = {'batch_size': 1, 'shuffle': True, 'num_workers': 6}
     train_set = Dataset(graph_indir, partition['train']) 
     train_loader = torch.utils.data.DataLoader(train_set, **params)
@@ -165,11 +166,13 @@ def main():
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
         disc = validate(model, device, val_loader)
+        print(disc)
         test(model, device, test_loader, disc=disc)
         scheduler.step()
     
         if args.save_model:
-            torch.save(model.state_dict(), "IN_150_100_100_noSched_{}.pt".format(args.pt))
+            torch.save(model.state_dict(), "{}_epoch{}_{}GeV.pt".format(args.construction,
+                                                                        epoch, args.pt))
 
 
 if __name__ == '__main__':

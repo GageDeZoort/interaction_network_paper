@@ -36,6 +36,7 @@ def parse_args():
     add_arg('-v', '--verbose', action='store_true')
     add_arg('--show-config', action='store_true')
     add_arg('--interactive', action='store_true')
+    add_arg('--start-evtid', type=int, default=1000)
     return parser.parse_args()
 
 def calc_dphi(phi1, phi2):
@@ -124,13 +125,6 @@ def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
         seg_dphi.append(dphi)
         seg_dz.append(dz)
         seg_dR.append(dR)
-        #seg_dr.extend(list(dr.squeeze())#dr.squeeze().to_list())
-        #seg_dphi.extend(list(dphi.squeeze())#dphi.squeeze().to_list())
-        #seg_dz.extend(#dz.squeeze().to_list())
-        #seg_dR.extend(#dR.squeeze().to_list())
-        
-        #pid1 = hits.particle_id.loc[selected.index_1].values
-        #pid2 = hits.particle_id.loc[selected.index_2].values
         
     # Combine segments from all layer pairs
     segments = pd.concat(segments)
@@ -145,7 +139,7 @@ def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
                    seg_dphi/feature_scale[1], 
                    seg_dz/feature_scale[2], 
                    seg_dR))
-    print(Ra)
+
     #Ra = np.zeros(n_edges)
     Ri = np.zeros((n_hits, n_edges), dtype=np.uint8)
     Ro = np.zeros((n_hits, n_edges), dtype=np.uint8)
@@ -375,7 +369,9 @@ def main():
 
     # Split the input files by number of tasks and select my chunk only
     file_prefixes = np.array_split(file_prefixes, args.n_tasks)[args.task]
-
+    file_prefixes = [prefix for prefix in file_prefixes
+                     if (int(prefix.split("00000")[1]) >= args.start_evtid)]
+    
     # Prepare output
     output_dir = os.path.expandvars(config['output_dir'])
     os.makedirs(output_dir, exist_ok=True)
