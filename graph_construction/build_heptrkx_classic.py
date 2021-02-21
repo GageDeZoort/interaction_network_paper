@@ -114,7 +114,7 @@ def construct_graph(hits, layer_pairs,
                    seg_dphi/feature_scale[1],
                    seg_dz/feature_scale[2],
                    np.array(seg_dR)))
-    print(Ra)
+
     Ri = np.zeros((n_hits, n_edges), dtype=np.uint8)
     Ro = np.zeros((n_hits, n_edges), dtype=np.uint8)
     y = np.zeros(n_edges, dtype=np.float32)
@@ -132,11 +132,14 @@ def construct_graph(hits, layer_pairs,
     Ri[seg_end, np.arange(n_edges)] = 1
     Ro[seg_start, np.arange(n_edges)] = 1
     # Fill the segment labels
+    pid = np.array(hits.particle_id.values, dtype=np.float32)
     pid1 = hits.particle_id.loc[segments.index_1].values
     pid2 = hits.particle_id.loc[segments.index_2].values
     y[:] = (pid1 == pid2)
     # Return a tuple of the results
-    return Graph(X, Ra, Ri, Ro, y)
+    print(X.shape)
+    print(pid.shape)
+    return Graph(X, Ra, Ri, Ro, y, pid)
 
 def select_hits(hits, truth, particles, pt_min=0):
     # Barrel volume and layer ids

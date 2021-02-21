@@ -19,7 +19,10 @@ def train(args, model, device, train_loader, optimizer, epoch):
     for batch_idx, (data, target) in enumerate(train_loader):
         X, Ra = data['X'].to(device), data['Ra'].to(device)
         Ri, Ro = data['Ri'].to(device), data['Ro'].to(device)
-        target = target.to(device)
+        target = target['y'].to(device)
+        #target = target.to(device)
+        #print('train graph: X.shape={}, Ra.shape={}, Ri.shape={}, Ro.shape={}, y.shape={}'
+        #      .format(X.shape, Ra.shape, Ri.shape, Ro.shape, target.shape))
         optimizer.zero_grad()
         output = model(X, Ra.float(), Ri.float(), Ro.float())
         loss = F.binary_cross_entropy(output.squeeze(2), target)
@@ -39,7 +42,8 @@ def validate(model, device, val_loader):
     for data, target in val_loader:
         X, Ra = data['X'].to(device), data['Ra'].to(device)
         Ri, Ro = data['Ri'].to(device), data['Ro'].to(device)
-        target = target.to(device)
+        target = target['y'].to(device)
+        #target = target.to(device)
         output = model(X, Ra.float(), Ri.float(), Ro.float())
         N_correct = torch.sum((target==1).squeeze() & (output>0.5).squeeze())
         N_correct += torch.sum((target==0).squeeze() & (output<0.5).squeeze())
@@ -63,7 +67,7 @@ def validate(model, device, val_loader):
     
     #print("best_tpr", best_tpr, "\nbest_tnr", best_tnr)
     #print("diff=", diff, "\nbest_disc=", best_disc)
-    #print("accuracy=", (N_tp+N_tn)/(N_tp+N_tn+N_fp+N_fn))
+    print("val accuracy=", (N_tp+N_tn)/(N_tp+N_tn+N_fp+N_fn))
     return np.mean(best_discs)
    
 def test(model, device, test_loader, disc=0.5):
@@ -74,7 +78,8 @@ def test(model, device, test_loader, disc=0.5):
         for data, target in test_loader:
             X, Ra = data['X'].to(device), data['Ra'].to(device)
             Ri, Ro = data['Ri'].to(device), data['Ro'].to(device)
-            target = target.to(device)
+            target = target['y'].to(device)
+            #target = target.to(device)
             output = model(X, Ra.float(), Ri.float(), Ro.float())
             N_correct = torch.sum((target==1).squeeze() & (output>0.5).squeeze())
             N_correct += torch.sum((target==0).squeeze() & (output<0.5).squeeze())
@@ -148,8 +153,6 @@ def main():
     partition = {'train': graph_files[IDs[:1000]],  
                  'test':  graph_files[IDs[1000:1400]],
                  'val': graph_files[IDs[1400:1500]]}
-    
-    print(len(np.unique(np.concatenate((partition['train'], partition['test'], partition['val'])))))
 
     params = {'batch_size': 1, 'shuffle': True, 'num_workers': 6}
     train_set = Dataset(graph_indir, partition['train']) 
@@ -160,13 +163,16 @@ def main():
     val_loader = torch.utils.data.DataLoader(val_set, **params)
 
     model = InteractionNetwork(3, 4, 4).to(device)
+    #model = InteractionNetwork(3, 1, 1).to(device)
+    total_params = sum(p.numel() for p in model.parameters())
+    print("total params", total_params)
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     scheduler = StepLR(optimizer, step_size=5, gamma=args.gamma)
 
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
         disc = validate(model, device, val_loader)
-        print(disc)
+        print('optimal discriminant', disc)
         test(model, device, test_loader, disc=disc)
         scheduler.step()
     

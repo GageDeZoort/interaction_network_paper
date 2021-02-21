@@ -151,13 +151,22 @@ def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
     hit_idx = pd.Series(np.arange(n_hits), index=hits.index)
     seg_start = hit_idx.loc[segments.index_1].values
     seg_end = hit_idx.loc[segments.index_2].values
+    print(seg_start)
+    print(seg_end)
 
     # Now we can fill the association matrices.
     # Note that Ri maps hits onto their incoming edges,
     # which are actually segment endings.
     Ri[seg_end, np.arange(n_edges)] = 1
     Ro[seg_start, np.arange(n_edges)] = 1
-    # Fill the segment labels
+    
+    # Fill the segment, particle labels
+    pid = hits.particle_id
+    unique_pid_map = {pid_old: pid_new 
+                      for pid_new, pid_old in enumerate(np.unique(pid.values))}
+    pid_mapped = pid.map(unique_pid_map)
+    print(pid_mapped)
+
     pid1 = hits.particle_id.loc[segments.index_1].values
     pid2 = hits.particle_id.loc[segments.index_2].values
     y[:] = (pid1 == pid2)
@@ -208,7 +217,8 @@ def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
     print("Ro.shape", Ro.shape)
     print("y.shape", y.shape)
     print("Ra.shape", Ra.shape)
-    return Graph(X, Ra, Ri, Ro, y)
+    print("pid.shape", pid_mapped.shape)
+    return Graph(X, Ra, Ri, Ro, y, pid_mapped)
 
 def select_hits(hits, truth, particles, pt_min=0, endcaps=False):
     # Barrel volume and layer ids
