@@ -15,11 +15,11 @@ class RelationalModel(nn.Module):
         self.output_size = output_size
         self.layers = nn.Sequential(
             nn.Linear(input_size, hidden_size),
-            nn.ELU(),
+            nn.ReLU(),
+            #nn.Linear(hidden_size, hidden_size),
+            #nn.ReLU(),
             nn.Linear(hidden_size, hidden_size),
-            nn.ELU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ELU(),
+            nn.ReLU(),
             nn.Linear(hidden_size, output_size),            
         )
 
@@ -32,9 +32,9 @@ class ObjectModel(nn.Module):
 
         self.layers = nn.Sequential(
             nn.Linear(input_size, hidden_size),
-            nn.ELU(),
+            nn.ReLU(),
             nn.Linear(hidden_size, hidden_size),
-            nn.ELU(),
+            nn.ReLU(),
             nn.Linear(hidden_size, 3),
         )
 
@@ -45,9 +45,9 @@ class InteractionNetwork(nn.Module):
     def __init__(self, object_dim, relation_dim, effect_dim):
         super(InteractionNetwork, self).__init__()
 
-        self.phi_R1 = RelationalModel(2*object_dim + relation_dim, effect_dim, 8)
-        self.phi_R2 = RelationalModel(2*object_dim + relation_dim, 1, 8)
-        self.phi_O = ObjectModel(object_dim + effect_dim, 8)
+        self.phi_R1 = RelationalModel(2*object_dim + relation_dim, effect_dim, 40)
+        self.phi_R2 = RelationalModel(2*object_dim + relation_dim, 1, 40)
+        self.phi_O = ObjectModel(object_dim + effect_dim, 40)
 
     def forward(self, X, Ra, Ro, Ri):
         X = torch.transpose(X, 1, 2)
