@@ -20,5 +20,5 @@
   
 - run_interaction_network.py: IN training script, example usage:
   ```
-  python run_interaction_network.py --pt=1 --construction=heptrkx_plus --lr=0.01 --gamma=0.5 --save-model 
+  python run_interaction_network.py --pt=1 --construction=heptrkx_plus --lr=0.005 --gamma=0.9 --save-model 
   ```
