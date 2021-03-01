@@ -19,8 +19,8 @@ def train(args, model, device, train_loader, optimizer, epoch):
     for batch_idx, (data, target) in enumerate(train_loader):
         X, Ra = data['X'].to(device), data['Ra'].to(device)
         Ri, Ro = data['Ri'].to(device), data['Ro'].to(device)
-        target = target['y'].to(device)
-        #target = target.to(device)
+        #target = target['y'].to(device)
+        target = target.to(device)
         #print('train graph: X.shape={}, Ra.shape={}, Ri.shape={}, Ro.shape={}, y.shape={}'
         #      .format(X.shape, Ra.shape, Ri.shape, Ro.shape, target.shape))
         optimizer.zero_grad()
@@ -42,8 +42,8 @@ def validate(model, device, val_loader):
     for data, target in val_loader:
         X, Ra = data['X'].to(device), data['Ra'].to(device)
         Ri, Ro = data['Ri'].to(device), data['Ro'].to(device)
-        target = target['y'].to(device)
-        #target = target.to(device)
+        #target = target['y'].to(device)
+        target = target.to(device)
         output = model(X, Ra.float(), Ri.float(), Ro.float())
         N_correct = torch.sum((target==1).squeeze() & (output>0.5).squeeze())
         N_correct += torch.sum((target==0).squeeze() & (output<0.5).squeeze())
@@ -78,8 +78,8 @@ def test(model, device, test_loader, disc=0.5):
         for data, target in test_loader:
             X, Ra = data['X'].to(device), data['Ra'].to(device)
             Ri, Ro = data['Ri'].to(device), data['Ro'].to(device)
-            target = target['y'].to(device)
-            #target = target.to(device)
+            #target = target['y'].to(device)
+            target = target.to(device)
             output = model(X, Ra.float(), Ri.float(), Ro.float())
             N_correct = torch.sum((target==1).squeeze() & (output>0.5).squeeze())
             N_correct += torch.sum((target==0).squeeze() & (output<0.5).squeeze())
@@ -150,9 +150,9 @@ def main():
 
     IDs = np.arange(n_graphs)
     np.random.shuffle(IDs)
-    partition = {'train': graph_files[IDs[:100]],  
-                 'test':  graph_files[IDs[98:99]],
-                 'val': graph_files[IDs[99:100]]}
+    partition = {'train': graph_files[IDs[:1]],  
+                 'test':  graph_files[IDs[1:2]],
+                 'val': graph_files[IDs[2:3]]}
 
     params = {'batch_size': 1, 'shuffle': True, 'num_workers': 6}
     train_set = Dataset(graph_indir, partition['train']) 
