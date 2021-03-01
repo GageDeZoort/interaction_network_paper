@@ -143,16 +143,16 @@ def main():
         train_kwargs.update(cuda_kwargs)
         test_kwargs.update(cuda_kwargs)
 
-    graph_indir = "/scratch/gpfs/jdezoort/hitgraphs/{}_{}/".format(args.construction, args.pt)
+    graph_indir = "/scratch/data/vrazavim/interaction_network_paper/hitgraphs/{}_{}/".format(args.construction, args.pt)
     #graph_indir = "/tigress/jdezoort/IN_samples_endcaps/IN_LP_{}/".format(args.pt)
     graph_files = np.array(os.listdir(graph_indir))
     n_graphs = len(graph_files)
 
     IDs = np.arange(n_graphs)
     np.random.shuffle(IDs)
-    partition = {'train': graph_files[IDs[:1000]],  
-                 'test':  graph_files[IDs[1000:1400]],
-                 'val': graph_files[IDs[1400:1500]]}
+    partition = {'train': graph_files[IDs[:100]],  
+                 'test':  graph_files[IDs[98:99]],
+                 'val': graph_files[IDs[99:100]]}
 
     params = {'batch_size': 1, 'shuffle': True, 'num_workers': 6}
     train_set = Dataset(graph_indir, partition['train']) 
@@ -173,7 +173,11 @@ def main():
         train(args, model, device, train_loader, optimizer, epoch)
         disc = validate(model, device, val_loader)
         print('optimal discriminant', disc)
+        timings = open("cpu_timing.txt", "a")
+        t0 = time()
         test(model, device, test_loader, disc=disc)
+        timings.write("{0}s \n".format(time() - t0))
+        timings.close()
         scheduler.step()
     
         if args.save_model:
