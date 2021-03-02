@@ -70,7 +70,7 @@ def validate(model, device, val_loader):
     print("val accuracy=", (N_tp+N_tn)/(N_tp+N_tn+N_fp+N_fn))
     return np.mean(best_discs)
    
-def test(model, device, test_loader, disc=0.5):
+def test(model, device, test_loader, disc=0.5, acc):
     model.eval()
     test_loss = 0
     accuracy = 0
@@ -80,7 +80,9 @@ def test(model, device, test_loader, disc=0.5):
             Ri, Ro = data['Ri'].to(device), data['Ro'].to(device)
             #target = target['y'].to(device)
             target = target.to(device)
+            t0 = time()
             output = model(X, Ra.float(), Ri.float(), Ro.float())
+            acc = time() - t0
             N_correct = torch.sum((target==1).squeeze() & (output>0.5).squeeze())
             N_correct += torch.sum((target==0).squeeze() & (output<0.5).squeeze())
             N_total = target.shape[1]
@@ -154,7 +156,7 @@ def main():
                  'test':  graph_files[IDs[:100]],
                  'val': graph_files[IDs[:1]]}
 
-    params = {'batch_size': 1, 'shuffle': True, 'num_workers': 6}
+    params = {'batch_size': 1, 'shuffle': True, 'num_workers': 0}#6}
     train_set = Dataset(graph_indir, partition['train']) 
     train_loader = torch.utils.data.DataLoader(train_set, **params)
     test_set = Dataset(graph_indir, partition['test'])
@@ -170,24 +172,27 @@ def main():
     scheduler = StepLR(optimizer, step_size=5, gamma=args.gamma)
 
     time_acc = 0
+    time_avg = 0
+    times = []
 
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
         disc = validate(model, device, val_loader)
         print('optimal discriminant', disc)
-        t0 = time()
-        test(model, device, test_loader, disc=disc)
-        tnet = time() - t0
-        time_acc = time_acc + tnet
+        test(model, device, test_loader, disc=disc, time_acc)
+        times.append(time_acc)
         scheduler.step()
     
         if args.save_model:
             torch.save(model.state_dict(), "{}_epoch{}_{}GeV.pt".format(args.construction,
                                                                         epoch, args.pt))
 
+    for i in times:
+        time_avg = time_avg + i
+
+    time_avg = time_avg / len(times)
     timings = open("cpu_timing.txt", "a")
-    time_acc = time_acc / 100
-    timings.write("{0}s \n".format(time_acc))
+    timings.write("{0}s \n".format(time_avg))
     timings.close()
 
 if __name__ == '__main__':
