@@ -74,6 +74,7 @@ def test(acc, model, device, test_loader, disc=0.5):
     model.eval()
     test_loss = 0
     accuracy = 0
+    count = 0
     with torch.no_grad():
         for data, target in test_loader:
             X, Ra = data['X'].to(device), data['Ra'].to(device)
@@ -82,7 +83,9 @@ def test(acc, model, device, test_loader, disc=0.5):
             target = target.to(device)
             t0 = time()
             output = model(X, Ra.float(), Ri.float(), Ro.float())
-            acc = time() - t0
+            temp = time() - t0
+            count = count + 1
+            acc = acc + temp
             N_correct = torch.sum((target==1).squeeze() & (output>0.5).squeeze())
             N_correct += torch.sum((target==0).squeeze() & (output<0.5).squeeze())
             N_total = target.shape[1]
@@ -94,6 +97,7 @@ def test(acc, model, device, test_loader, disc=0.5):
             test_loss += F.binary_cross_entropy(output.squeeze(2), target, 
                                                 reduction='mean').item() 
 
+    acc = acc / count
     test_loss /= len(test_loader.dataset)
     accuracy /= len(test_loader.dataset)
     print('\nTest set: Average loss: {:.4f}\n, Accuracy: {:.4f}\n'
