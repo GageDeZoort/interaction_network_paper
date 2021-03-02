@@ -70,7 +70,7 @@ def validate(model, device, val_loader):
     print("val accuracy=", (N_tp+N_tn)/(N_tp+N_tn+N_fp+N_fn))
     return np.mean(best_discs)
    
-def test(model, device, test_loader, disc=0.5, acc):
+def test(acc, model, device, test_loader, disc=0.5):
     model.eval()
     test_loss = 0
     accuracy = 0
@@ -179,7 +179,7 @@ def main():
         train(args, model, device, train_loader, optimizer, epoch)
         disc = validate(model, device, val_loader)
         print('optimal discriminant', disc)
-        test(model, device, test_loader, disc=disc, time_acc)
+        test(time_acc, model, device, test_loader, disc=disc)
         times.append(time_acc)
         scheduler.step()
     
