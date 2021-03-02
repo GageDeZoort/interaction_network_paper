@@ -16,37 +16,37 @@ if gpu == False:
 
   file.write("2 GeV - ")
   file.close()
-  os.system("python run_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=2GeV --no-cuda --construction=heptrkx_plus --lr=0.005 --gamma=0.9 --save-model")
+  os.system("python run_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=2GeV --no-cuda --construction=heptrkx_plus --lr=0.005 --gamma=0.9")
   print("2 GeV complete")
 
   file = open("cpu_timing.txt", "a")
   file.write("1.5 GeV - ")
   file.close()
-  os.system("python run_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=1GeV5 --no-cuda --construction=heptrkx_plus --lr=0.005 --gamma=0.9 --save-model")
+  os.system("python run_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=1GeV5 --no-cuda --construction=heptrkx_plus --lr=0.005 --gamma=0.9")
   print("1.5 GeV complete")
 
   file = open("cpu_timing.txt", "a")
   file.write("1 GeV - ")
   file.close()
-  os.system("python run_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=1GeV --no-cuda --construction=heptrkx_plus --lr=0.005 --gamma=0.9 --save-model")
+  os.system("python run_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=1GeV --no-cuda --construction=heptrkx_plus --lr=0.005 --gamma=0.9")
   print("1 GeV complete")
 
   file = open("cpu_timing.txt", "a")
   file.write("0.75 GeV - ")
   file.close()
-  os.system("python run_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=0GeV75 --no-cuda --construction=heptrkx_plus --lr=0.005 --gamma=0.9 --save-model")
+  os.system("python run_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=0GeV75 --no-cuda --construction=heptrkx_plus --lr=0.005 --gamma=0.9")
   print("0.75 GeV complete")
 
   file = open("cpu_timing.txt", "a")
   file.write("0.6 GeV - ")
   file.close()
-  os.system("python run_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=0GeV6 --no-cuda --construction=heptrkx_plus --lr=0.005 --gamma=0.9 --save-model")
+  os.system("python run_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=0GeV6 --no-cuda --construction=heptrkx_plus --lr=0.005 --gamma=0.9")
   print("0.6 GeV complete")
 
   file = open("cpu_timing.txt", "a")
   file.write("0.5 GeV - ")
   file.close()
-  os.system("python run_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=0GeV5 --no-cuda --construction=heptrkx_plus --lr=0.005 --gamma=0.9 --save-model")
+  os.system("python run_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=0GeV5 --no-cuda --construction=heptrkx_plus --lr=0.005 --gamma=0.9")
   print("0.5 GeV complete")
 
 else:
