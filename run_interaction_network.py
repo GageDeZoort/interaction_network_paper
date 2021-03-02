@@ -143,7 +143,7 @@ def main():
         train_kwargs.update(cuda_kwargs)
         test_kwargs.update(cuda_kwargs)
 
-    graph_indir = "/scratch/data/vrazavim/interaction_network_paper/hitgraphs/{}_{}/".format(args.construction, args.pt)
+    graph_indir = "/interactionnetworkvol/interaction_network_paper/hitgraphs/{}_{}/".format(args.construction, args.pt)
     #graph_indir = "/tigress/jdezoort/IN_samples_endcaps/IN_LP_{}/".format(args.pt)
     graph_files = np.array(os.listdir(graph_indir))
     n_graphs = len(graph_files)
@@ -151,8 +151,8 @@ def main():
     IDs = np.arange(n_graphs)
     np.random.shuffle(IDs)
     partition = {'train': graph_files[IDs[:1]],  
-                 'test':  graph_files[IDs[1:2]],
-                 'val': graph_files[IDs[2:3]]}
+                 'test':  graph_files[IDs[:100]],
+                 'val': graph_files[IDs[:1]]}
 
     params = {'batch_size': 1, 'shuffle': True, 'num_workers': 6}
     train_set = Dataset(graph_indir, partition['train']) 
@@ -169,21 +169,26 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     scheduler = StepLR(optimizer, step_size=5, gamma=args.gamma)
 
+    time_acc = 0
+
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
         disc = validate(model, device, val_loader)
         print('optimal discriminant', disc)
-        timings = open("cpu_timing.txt", "a")
         t0 = time()
         test(model, device, test_loader, disc=disc)
-        timings.write("{0}s \n".format(time() - t0))
-        timings.close()
+        tnet = time() - t0
+        time_acc = time_acc + tnet
         scheduler.step()
     
         if args.save_model:
             torch.save(model.state_dict(), "{}_epoch{}_{}GeV.pt".format(args.construction,
                                                                         epoch, args.pt))
 
+    timings = open("cpu_timing.txt", "a")
+    time_acc = time_acc / 100
+    timings.write("{0}s \n".format(time_acc))
+    timings.close()
 
 if __name__ == '__main__':
     main()

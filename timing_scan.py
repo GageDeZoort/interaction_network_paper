@@ -18,7 +18,7 @@ if gpu == False:
   file.close()
   os.system("python run_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=2GeV --no-cuda --construction=heptrkx_plus --lr=0.005 --gamma=0.9 --save-model")
   print("2 GeV complete")
-"""
+
   file = open("cpu_timing.txt", "a")
   file.write("1.5 GeV - ")
   file.close()
@@ -51,4 +51,3 @@ if gpu == False:
 
 else:
   print("no gpu code yet")
-"""
