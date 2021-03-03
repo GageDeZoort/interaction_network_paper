@@ -1,5 +1,5 @@
 from __future__ import print_function
-#import setGPU
+import setGPU
 import os
 from time import time
 import timeit
@@ -56,7 +56,7 @@ if use_cuda:
     train_kwargs.update(cuda_kwargs)
     test_kwargs.update(cuda_kwargs)
 
-graph_indir = "/interactionnetworkvol/interaction_network_paper/hitgraphs/{}_{}/".format(args.construction, args.pt)
+graph_indir = "/scratch/data/vrazavim/interaction_network_paper/hitgraphs/{}_{}/".format(args.construction, args.pt)
 graph_files = np.array(os.listdir(graph_indir))
 n_graphs = len(graph_files)
 
