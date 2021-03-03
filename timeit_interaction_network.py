@@ -98,7 +98,10 @@ for epoch in range(1, args.epochs + 1):
             temp = timeit.timeit('output', 'from __main__ import output')
             acc.append(temp)
             print(acc[count])
-            timings = open("cpu_timing.txt", "a")
+            if use_cuda:
+                timings = open("gpu_timing.txt", "a")
+            else:
+                timings = open("cpu_timing.txt", "a")
             timings.write("{0}s \n".format(acc[count]))
             timings.close()
             count = count + 1
@@ -110,6 +113,9 @@ for i in acc:
     avg += i
 
 avg /= float(len(acc))
-timings = open("cpu_timing.txt", "a")
+if use_cuda:
+    timings = open("gpu_timing.txt", "a")
+else:
+    timings = open("cpu_timing.txt", "a")
 timings.write("avg = {0}s \n".format(avg))
 timings.close()

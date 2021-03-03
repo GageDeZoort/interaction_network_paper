@@ -30,7 +30,7 @@ if gpu == False:
   file.close()
   os.system("python timeit_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=1GeV --no-cuda --construction=heptrkx_plus --lr=0.005 --gamma=0.9")
   print("1 GeV complete")
-
+  """
   file = open("cpu_timing.txt", "a")
   file.write("\n 0.75 GeV - \n")
   file.close()
@@ -48,7 +48,7 @@ if gpu == False:
   file.close()
   os.system("python timeit_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=0GeV5 --no-cuda --construction=heptrkx_plus --lr=0.005 --gamma=0.9")
   print("0.5 GeV complete")
-
+  """
 else:
   file = open("gpu_timing.txt", "w")
   file.write("CPU-GPU inference timing \n")
@@ -69,7 +69,7 @@ else:
   file.close()
   os.system("python timeit_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=1GeV --construction=heptrkx_plus --lr=0.005 --gamma=0.9")
   print("1 GeV complete")
-
+  """
   file = open("gpu_timing.txt", "a")
   file.write("\n 0.75 GeV - \n")
   file.close()
@@ -87,3 +87,4 @@ else:
   file.close()
   os.system("python timeit_interaction_network.py --batch-size=1 --test-batch-size=1 --epochs=1 --pt=0GeV5 --construction=heptrkx_plus --lr=0.005 --gamma=0.9")
   print("0.5 GeV complete")
+  """
