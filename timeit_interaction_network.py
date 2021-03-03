@@ -1,5 +1,5 @@
 from __future__ import print_function
-import setGPU
+#import setGPU
 import os
 from time import time
 import timeit
@@ -64,7 +64,7 @@ IDs = np.arange(n_graphs)
 np.random.shuffle(IDs)
 partition = {'train': graph_files[IDs[:1]],
              'test':  graph_files[IDs[:100]],
-             'val': graph_files[IDs[:1]]}
+             'val': graph_files[IDs[:3]]}
 
 params = {'batch_size': 1, 'shuffle': True, 'num_workers': 0}
 train_set = Dataset(graph_indir, partition['train'])
@@ -81,6 +81,21 @@ print("total params", total_params)
 optimizer = optim.Adam(model.parameters(), lr=args.lr)
 scheduler = StepLR(optimizer, step_size=5, gamma=args.gamma)
 
+#device warmup
+model.eval()
+best_discs = []
+for data, target in val_loader:
+    X, Ra = data['X'].to(device), data['Ra'].to(device)
+    Ri, Ro = data['Ri'].to(device), data['Ro'].to(device)
+    #target = target['y'].to(device)
+    target = target.to(device)
+    output = model(X, Ra.float(), Ri.float(), Ro.float())
+    N_correct = torch.sum((target==1).squeeze() & (output>0.5).squeeze())
+    N_correct += torch.sum((target==0).squeeze() & (output<0.5).squeeze())
+    N_total = target.shape[1]
+    print("warming up...")
+
+#inference timing measurements
 acc = []
 
 for epoch in range(1, args.epochs + 1):
