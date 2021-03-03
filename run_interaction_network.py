@@ -1,6 +1,7 @@
 from __future__ import print_function
 import os
 from time import time
+import timeit
 import argparse
 import torch
 import torch.nn as nn
@@ -81,11 +82,14 @@ def test(acc, model, device, test_loader, disc=0.5):
             Ri, Ro = data['Ri'].to(device), data['Ro'].to(device)
             #target = target['y'].to(device)
             target = target.to(device)
-            t0 = time()
             output = model(X, Ra.float(), Ri.float(), Ro.float())
-            temp = time() - t0
+            temp = timeit.timeit('output')
+            acc.append(temp)
+            print(acc[count])
+            timings = open("cpu_timing.txt", "a")
+            timings.write("{0}s \n".format(acc[count]))
+            timings.close()
             count = count + 1
-            acc = acc + temp
             N_correct = torch.sum((target==1).squeeze() & (output>0.5).squeeze())
             N_correct += torch.sum((target==0).squeeze() & (output<0.5).squeeze())
             N_total = target.shape[1]
@@ -97,7 +101,6 @@ def test(acc, model, device, test_loader, disc=0.5):
             test_loss += F.binary_cross_entropy(output.squeeze(2), target, 
                                                 reduction='mean').item() 
 
-    acc = acc / count
     test_loss /= len(test_loader.dataset)
     accuracy /= len(test_loader.dataset)
     print('\nTest set: Average loss: {:.4f}\n, Accuracy: {:.4f}\n'
@@ -175,9 +178,7 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     scheduler = StepLR(optimizer, step_size=5, gamma=args.gamma)
 
-    time_acc = 0
-    time_avg = 0
-    times = []
+    time_acc = []
 
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
@@ -191,13 +192,6 @@ def main():
             torch.save(model.state_dict(), "{}_epoch{}_{}GeV.pt".format(args.construction,
                                                                         epoch, args.pt))
 
-    for i in times:
-        time_avg = time_avg + i
-
-    time_avg = time_avg / len(times)
-    timings = open("cpu_timing.txt", "a")
-    timings.write("{0}s \n".format(time_avg))
-    timings.close()
 
 if __name__ == '__main__':
     main()
