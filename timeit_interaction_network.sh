@@ -3,9 +3,9 @@ PT="2GeV"
 BATCHSIZE=1
 GRAPHBATCHNUM=0
 CONSTRUCTION="heptrkx_plus"
-CUDA=0
-SETUP="#import setGPU
-import os
+CUDA=1
+SETUP="import os
+os.environ['CUDA_VISIBLE_DEVICES']='0' # no gpus
 import torch
 from torchvision import datasets, transforms
 import numpy as np
