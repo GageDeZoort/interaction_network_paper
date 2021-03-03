@@ -64,7 +64,7 @@ IDs = np.arange(n_graphs)
 np.random.shuffle(IDs)
 partition = {'train': graph_files[IDs[:1]],
              'test':  graph_files[IDs[:100]],
-             'val': graph_files[IDs[:3]]}
+             'val': graph_files[IDs[:50]]}
 
 params = {'batch_size': 1, 'shuffle': True, 'num_workers': 0}
 train_set = Dataset(graph_indir, partition['train'])
