@@ -103,3 +103,12 @@ for epoch in range(1, args.epochs + 1):
             count = count + 1
 
     scheduler.step()
+
+avg = 0
+for i in acc:
+    avg += i
+
+avg /= float(len(acc))
+timings = open("cpu_timing.txt", "a")
+timings.write("avg = {0}s \n".format(avg))
+timings.close()
