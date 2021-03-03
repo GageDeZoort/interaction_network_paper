@@ -20,6 +20,7 @@ class Dataset(torch.utils.data.Dataset):
         graph = load_graph(path)
         X = np.transpose(graph.X)
         Ra = np.transpose(graph.Ra)
+        #Ra = np.zeros((len(graph.y), 1))
         Ri = np.transpose(graph.Ri)
         Ro = np.transpose(graph.Ro)
-        return {'X': X, 'Ra': Ra, 'Ri': Ri, 'Ro': Ro}, graph.y
+        return {'X': X, 'Ra': Ra, 'Ri': Ri, 'Ro': Ro}, {'y': graph.y, 'pid': graph.pid}
