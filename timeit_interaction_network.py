@@ -1,4 +1,5 @@
 from __future__ import print_function
+import setGPU
 import os
 from time import time
 import timeit
