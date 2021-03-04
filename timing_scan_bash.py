@@ -57,7 +57,8 @@ for x in range(0,100):
 acc = []
 with open(filename, "r") as f:
   for line in f.readlines():
-    if '100 loops, best of 5:' in line:
+    if 'best of 5:' in line:
+      print("parse line recognized")
       acc.append(int(line[22:26].strip()))
 
 avg = 0
