@@ -21,7 +21,6 @@ graph_indir = 'hitgraphs/{}_{}/'.format(construction, pt)
 graph_files = np.array(os.listdir(graph_indir))
 n_graphs = len(graph_files)
 IDs = np.arange(n_graphs)
-np.random.shuffle(IDs)
 partition = {'test':  graph_files[IDs[:100]]}
 params = {'batch_size': $BATCHSIZE, 'shuffle': False, 'num_workers': 0}
 test_set = Dataset(graph_indir, partition['test'])
@@ -32,8 +31,9 @@ i = 0
 for data, target in test_loader:
   if i == $GRAPHBATCHNUM: break
   i += 1
-X, Ra = data['X'].to(device), data['Ra'].to(device).float()
-Ri, Ro = data['Ri'].to(device).float(), data['Ro'].to(device).float()"
+X, Ra = data['X'].to(device), data['Ra'].to(device, dtype=torch.float32)
+Ri, Ro = data['Ri'].to(device, dtype=torch.float32), data['Ro'].to(device, dtype=torch.float32)
+print('Graph size', Ri.shape)"
 echo $SETUP
-python -m timeit -s "$SETUP" -n 100 -r 5 -v "model(X, Ra, Ri, Ro)"
+python -m timeit -s "$SETUP" -n 100 -r 3 -v "model(X, Ra, Ri, Ro)"
 
