@@ -62,7 +62,7 @@ with open(filename, "r") as f:
 
 avg = 0
 for x in len(acc):
-  avg += acc[x]
+  avg += x
 
 avg /= len(acc)
 
