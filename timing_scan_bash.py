@@ -4,21 +4,21 @@ import argparse
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--pt', type=str, default='2GeV',
-                    help='Cutoff pt value in GeV (default: 2GeV)')
-parser.add_argument('--batch-size', type=int, default=1, metavar='N',
+#parser.add_argument('--pt', type=str, default='2GeV',
+#                    help='Cutoff pt value in GeV (default: 2GeV)')
+parser.add_argument('--batchsize', type=int, default=1, metavar='N',
                     help='input batch size for inference')
 parser.add_argument('--construction', type=str, default='heptrk_classic',
                     help='graph construction method')
 parser.add_argument('--gpu', action='store_true', default=False,
                     help='perform inference on GPU')
 args = parser.parse_args()
-
+"""
 file = open("timeit_interaction_network.sh", "r")
 lines = file.readlines()
-lines[1] = "PT='{}\n'".format(args.pt)
-lines[2] = "BATCHSIZE={}\n".format(args.batch_size)
-lines[4] = "CONSTRUCTION='{}\n'".format(args.construction)
+lines[1] = 'PT="{}"\n'.format(args.pt)
+lines[2] = "BATCHSIZE={}\n".format(args.batchsize)
+lines[4] = 'CONSTRUCTION="{}"\n'.format(args.construction)
 lines[5] = "CUDA={}\n".format(1 if args.gpu else 0)
 file = open("timeit_interaction_network.sh", "w")
 file.writelines(lines)
@@ -36,35 +36,61 @@ else:
 outfile = open(filename, "w")
 outfile.write(title)
 outfile.close()
+"""
+pts =['2GeV', '1GeV5', '1GeV', '0GeV75', '0GeV6', '0GeV5']
 
-for x in range(0,100):
+for pt in pts:
   file = open("timeit_interaction_network.sh", "r")
   lines = file.readlines()
-  lines[3] = 'GRAPHBATCHNUM="{}\n"'.format(x)
+  lines[1] = 'PT="{}"\n'.format(pt)
+  lines[2] = "BATCHSIZE={}\n".format(args.batchsize)
+  lines[4] = 'CONSTRUCTION="{}"\n'.format(args.construction)
+  lines[5] = "CUDA={}\n".format(1 if args.gpu else 0)
   file = open("timeit_interaction_network.sh", "w")
   file.writelines(lines)
   file.close()
 
-  cmd = subprocess.Popen(['bash', 'timeit_interaction_network.sh'],
-                         stdout=subprocess.PIPE,
-                         stderr=subprocess.STDOUT)
-  stdout,stderr = cmd.communicate()
-  outfile = open(filename, "a")
-  outfile.write("\n")
-  outfile.write("{} \n".format(stdout))
+  if(args.gpu):
+    filename = "gpu_timing_{}_{}.txt".format(args.construction, pt)
+    title = "CPU+GPU inference timing \n"
+    device = "CPU+GPU"
+  else:
+    filename = "cpu_timing_{}_{}.txt".format(args.construction, pt)
+    title = "CPU inference timing \n"
+    device = "CPU"
+
+  outfile = open(filename, "w")
+  outfile.write(title)
   outfile.close()
+  for x in range(0,100):
+    file = open("timeit_interaction_network.sh", "r")
+    lines = file.readlines()
+    lines[3] = "GRAPHBATCHNUM={}\n".format(x)
+    file = open("timeit_interaction_network.sh", "w")
+    file.writelines(lines)
+    file.close()
 
-acc = []
-with open(filename, "r") as f:
-  for line in f.readlines():
-    if 'best of 5:' in line:
-      print("parse line recognized")
-      acc.append(int(line[22:26].strip()))
+    cmd = subprocess.check_output(['bash', 'timeit_interaction_network.sh']).splitlines()
+    for i, line in enumerate(cmd):
+      if 'loops, best of' in str(line):
+        outfile = open(filename, "a")
+        outfile.write("\n")
+        outfile.write("{} \n".format(line))
+        outfile.close()
+      else:
+        continue
 
-avg = 0
-for x in range(0,len(acc)):
-  avg += acc[x]
+  acc = []
+  with open(filename, "r") as f:
+    for line in f.readlines():
+      if 'loops, best of:' in line:
+        print("parse line recognized")
+        acc.append(int(line[24:28].strip()))
 
-avg /= len(acc)
+  avg = 0
+  for x in range(0,len(acc)):
+    avg += acc[x]
 
-print("average {} inference time(pt cut = {}, model = {}) = {}".format(device, args.pt, args.construction)) 
+  avg /= len(acc)
+
+  print("average {} inference time(pt cut = {}, model = {}) = {}".format(device, pt, args.construction, avg)) 
