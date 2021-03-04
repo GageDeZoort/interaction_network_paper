@@ -61,8 +61,8 @@ with open(filename, "r") as f:
       acc.append(int(line[22:26].strip()))
 
 avg = 0
-for x in len(acc):
-  avg += x
+for x in range(0,len(acc)):
+  avg += acc[x]
 
 avg /= len(acc)
 
