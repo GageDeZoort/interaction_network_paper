@@ -12,6 +12,7 @@ parser.add_argument('--construction', type=str, default='heptrk_classic',
                     help='graph construction method')
 parser.add_argument('--gpu', action='store_true', default=False,
                     help='perform inference on GPU')
+args = parser.parse_args()
 
 file = open("timeit_interaction_network.sh", "r")
 lines = file.readlines()
@@ -44,7 +45,7 @@ for x in range(0,100):
   file.writelines(lines)
   file.close()
 
-  cmd = subprocess.Popen(['bash timeit_interaction_network.sh'],
+  cmd = subprocess.Popen(['bash', 'timeit_interaction_network.sh'],
                          stdout=subprocess.PIPE,
                          stderr=subprocess.STDOUT)
   stdout,stderr = cmd.communicate()
