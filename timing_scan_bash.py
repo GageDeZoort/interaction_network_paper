@@ -6,14 +6,15 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--batchsize', type=int, default=1, metavar='N',
                     help='input batch size for inference')
+parser.add_argument('--graphs', type=int, default=5, metavar='N',
+                    help='number of random graphs for ave, std')
 parser.add_argument('--construction', type=str, default='heptrk_classic',
                     help='graph construction method')
 parser.add_argument('--gpu', action='store_true', default=False,
                     help='perform inference on GPU')
 args = parser.parse_args()
 
-pts = ['2GeV', '1GeV5', '1GeV', '0GeV75']
-#pts = ['2GeV', '1GeV5', '1GeV', '0GeV75', '0GeV6', '0GeV5']
+pts = ['2GeV', '1GeV5', '1GeV', '0GeV75', '0GeV6', '0GeV5']
 
 for pt in pts:
   with open("timeit_interaction_network.sh", "r") as f:
@@ -36,7 +37,7 @@ for pt in pts:
 
   with open(filename, "w") as outfile:
     outfile.write(title)
-  for x in range(0,10):
+  for x in range(0, args.graphs):
     with open("timeit_interaction_network_tmp.sh", "r") as f:
       lines = f.readlines()
     lines[3] = "GRAPHBATCHNUM={}\n".format(x)
@@ -45,10 +46,8 @@ for pt in pts:
 
     os.system('chmod +x timeit_interaction_network_tmp.sh')
 
-    try: 
-      cmd = subprocess.check_output(['./timeit_interaction_network_tmp.sh']).splitlines()
-    except:
-      continue
+    cmd = subprocess.check_output(['./timeit_interaction_network_tmp.sh']).splitlines()
+    
     for i, line in enumerate(cmd):
       if 'loops, best of' in str(line):
         print(str(line))

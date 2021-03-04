@@ -1,7 +1,7 @@
 #!/bin/bash
 PT="0GeV75"
 BATCHSIZE=1
-GRAPHBATCHNUM=2
+GRAPHBATCHNUM=0
 CONSTRUCTION="heptrkx_plus"
 CUDA=1
 SETUP="import os
@@ -34,4 +34,4 @@ for data, target in test_loader:
 X, Ra = data['X'].to(device), data['Ra'].to(device, dtype=torch.float32)
 Ri, Ro = data['Ri'].to(device, dtype=torch.float32), data['Ro'].to(device, dtype=torch.float32)"
 echo $SETUP
-python -m timeit -s "$SETUP" -n 100 -r 5 -v "model(X, Ra, Ri, Ro)"
+python -m timeit -s "$SETUP" -n 100 -r 2 -v "model(X, Ra, Ri, Ro)"
