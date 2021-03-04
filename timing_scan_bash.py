@@ -1,7 +1,7 @@
 import os
+import numpy as np
 import subprocess
 import argparse
-import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--batchsize', type=int, default=1, metavar='N',
@@ -16,15 +16,14 @@ pts = ['2GeV', '1GeV5', '1GeV', '0GeV75']
 #pts = ['2GeV', '1GeV5', '1GeV', '0GeV75', '0GeV6', '0GeV5']
 
 for pt in pts:
-  file = open("timeit_interaction_network.sh", "r")
-  lines = file.readlines()
+  with open("timeit_interaction_network.sh", "r") as f:
+    lines = f.readlines()
   lines[1] = 'PT="{}"\n'.format(pt)
   lines[2] = "BATCHSIZE={}\n".format(args.batchsize)
   lines[4] = 'CONSTRUCTION="{}"\n'.format(args.construction)
   lines[5] = "CUDA={}\n".format(1 if args.gpu else 0)
-  file = open("timeit_interaction_network.sh", "w")
-  file.writelines(lines)
-  file.close()
+  with open("timeit_interaction_network_tmp.sh", "w") as f:
+    f.writelines(lines)
 
   if(args.gpu):
     filename = "gpu_timing_{}_{}.txt".format(args.construction, pt)
@@ -35,25 +34,27 @@ for pt in pts:
     title = "CPU inference timing \n"
     device = "CPU"
 
-  outfile = open(filename, "w")
-  outfile.write(title)
-  outfile.close()
-  for x in range(0,3):
-    file = open("timeit_interaction_network.sh", "r")
-    lines = file.readlines()
+  with open(filename, "w") as outfile:
+    outfile.write(title)
+  for x in range(0,10):
+    with open("timeit_interaction_network_tmp.sh", "r") as f:
+      lines = f.readlines()
     lines[3] = "GRAPHBATCHNUM={}\n".format(x)
-    file = open("timeit_interaction_network.sh", "w")
-    file.writelines(lines)
-    file.close()
+    with open("timeit_interaction_network_tmp.sh", "w") as f:
+      f.writelines(lines)
 
-    cmd = subprocess.check_output(['bash', 'timeit_interaction_network.sh']).splitlines()
+    os.system('chmod +x timeit_interaction_network_tmp.sh')
+
+    try: 
+      cmd = subprocess.check_output(['./timeit_interaction_network_tmp.sh']).splitlines()
+    except:
+      continue
     for i, line in enumerate(cmd):
       if 'loops, best of' in str(line):
         print(str(line))
-        outfile = open(filename, "a")
-        outfile.write("\n")
-        outfile.write("{} \n".format(line))
-        outfile.close()
+        with open(filename, "a") as outfile:
+          outfile.write("\n")
+          outfile.write("{}\n".format(line))
       else:
         continue
 
