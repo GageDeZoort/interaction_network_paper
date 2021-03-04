@@ -1,7 +1,7 @@
 #!/bin/bash
-PT="1GeV"
+PT="0GeV75"
 BATCHSIZE=1
-GRAPHBATCHNUM=0
+GRAPHBATCHNUM=2
 CONSTRUCTION="heptrkx_plus"
 CUDA=1
 SETUP="import os
@@ -32,8 +32,6 @@ for data, target in test_loader:
   if i == $GRAPHBATCHNUM: break
   i += 1
 X, Ra = data['X'].to(device), data['Ra'].to(device, dtype=torch.float32)
-Ri, Ro = data['Ri'].to(device, dtype=torch.float32), data['Ro'].to(device, dtype=torch.float32)
-print('Graph size', Ri.shape)"
+Ri, Ro = data['Ri'].to(device, dtype=torch.float32), data['Ro'].to(device, dtype=torch.float32)"
 echo $SETUP
-python -m timeit -s "$SETUP" -n 100 -r 3 -v "model(X, Ra, Ri, Ro)"
-
+python -m timeit -s "$SETUP" -n 100 -r 5 -v "model(X, Ra, Ri, Ro)"
