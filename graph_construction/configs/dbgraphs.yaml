@@ -1,13 +1,13 @@
 # Input/output configuration
 input_dir: /tigress/jdezoort/train_1
-output_dir:  /scratch/gpfs/jdezoort/hitgraphs/dbgraphs_0p5
+output_dir:  /scratch/gpfs/jdezoort/hitgraphs/dbgraphs_1
 n_files: 1770
 
 # Graph building configuration
 selection:
-    pt_min: 0.5 # GeV
-    phi_slope_max: 0.000763 #000262 # 0.0006
-    z0_max: 29951 # 100
+    pt_min: 1 #GeV 
+    phi_slope_max: 0.000763 
+    z0_max: 15000
     n_phi_sections: 1
     n_eta_sections: 1
     eta_range: [-5, 5]

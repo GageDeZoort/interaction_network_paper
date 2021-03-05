@@ -53,8 +53,10 @@ graph_dir = '/scratch/gpfs/jdezoort/hitgraphs_2/{}_{}/'.format(method, pt_cut_st
 truth = {}
 purities, efficiencies = [], []
 sizes, nodes, edges = [], [], []
+
+N_avg = 100
 for i, evtid in enumerate(evt_ids):
-    #if (int(evtid.split("00000")[1].split(".")[0]) > 1010): continue
+    if (int(evtid.split("00000")[1].split(".")[0]) > 2820+N_avg): continue
 
     print("evtid", evtid)
     #if (i == N_avg): break
@@ -74,6 +76,7 @@ for i, evtid in enumerate(evt_ids):
         if(np.sum(Ri_row) > 1): 
             print("ERREREREREREROR!!!!")
         
+    print(y)
     print("graph.X: {}, graph.Ra: {}, graph.Ri: {}, graph.y: {}"
           .format(graph.X.shape, graph.Ra.shape, graph.Ri.shape, graph.y.shape))
 
@@ -150,6 +153,7 @@ for i, evtid in enumerate(evt_ids):
     sizes.append(size)
     nodes.append(n_nodes)
     edges.append(n_edges)
+    if (i==N_avg): break
 
 print('\navg. purity = {:.3f}+/-{:.3f}'
       .format(np.mean(purities), np.std(purities)))
