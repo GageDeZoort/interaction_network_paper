@@ -138,7 +138,7 @@ def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
     X = hits[['eta', 'phi', 'layer']].to_numpy()
     dist_matrix = build_dist_matrix(X)
     # 0.5: 0.05; 0.6: 0.06; 0.75: 0.08; 1: 0.016opt, 0.1; 1p5, 0.18; 2: 0.030opt, 0.22
-    for eps in [0.06]:
+    for eps in [0.05]:
         labels = cluster_hits(dist_matrix, eps=eps, k=3)
         print('n unique labels at eps={}: {}'.format(eps, len(np.unique(labels))))
     hits['label'] = labels

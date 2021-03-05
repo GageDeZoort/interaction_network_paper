@@ -37,6 +37,7 @@ def parse_args():
     add_arg('--show-config', action='store_true')
     add_arg('--interactive', action='store_true')
     add_arg('--start-evtid', type=int, default=1000)
+    add_arg('--end-evtid', type=int, default=2700)
     return parser.parse_args()
 
 def calc_dphi(phi1, phi2):
@@ -77,7 +78,7 @@ def select_segments(hits1, hits2, phi_slope_max, z0_max,
     dR = np.sqrt(deta**2 + dphi**2)
     phi_slope = dphi / dr
     z0 = hit_pairs.z_1 - hit_pairs.r_1 * dz / dr
-    
+    #print("max(z0) = ", np.max(abs(z0)))
     # Apply the intersecting line cut
     intersected_layer = dr.abs() < -1 
     if remove_intersecting_edges:
@@ -151,8 +152,8 @@ def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
     hit_idx = pd.Series(np.arange(n_hits), index=hits.index)
     seg_start = hit_idx.loc[segments.index_1].values
     seg_end = hit_idx.loc[segments.index_2].values
-    print(seg_start)
-    print(seg_end)
+    #print(seg_start)
+    #print(seg_end)
 
     # Now we can fill the association matrices.
     # Note that Ri maps hits onto their incoming edges,
@@ -380,7 +381,9 @@ def main():
     # Split the input files by number of tasks and select my chunk only
     file_prefixes = np.array_split(file_prefixes, args.n_tasks)[args.task]
     file_prefixes = [prefix for prefix in file_prefixes
-                     if (int(prefix.split("00000")[1]) >= args.start_evtid)]
+                     if ((int(prefix.split("00000")[1]) >= args.start_evtid) and
+                         (int(prefix.split("00000")[1]) <= args.end_evtid))]
+
     
     # Prepare output
     output_dir = os.path.expandvars(config['output_dir'])

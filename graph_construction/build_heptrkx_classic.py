@@ -33,6 +33,8 @@ def parse_args():
     add_arg('-v', '--verbose', action='store_true')
     add_arg('--show-config', action='store_true')
     add_arg('--interactive', action='store_true')
+    add_arg('--start-evtid', type=int, default=1000)
+    add_arg('--end-evtid', type=int, default=2770)
     return parser.parse_args()
 
 def calc_dphi(phi1, phi2):
@@ -269,6 +271,9 @@ def main():
 
     # Split the input files by number of tasks and select my chunk only
     file_prefixes = np.array_split(file_prefixes, args.n_tasks)[args.task]
+    file_prefixes = [prefix for prefix in file_prefixes
+                     if ((int(prefix.split("00000")[1]) >= args.start_evtid) and 
+                         (int(prefix.split("00000")[1]) <= args.end_evtid))]
 
     # Prepare output
     output_dir = os.path.expandvars(config['output_dir'])
