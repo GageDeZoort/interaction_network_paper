@@ -17,7 +17,7 @@ torch.manual_seed(1)
 device = torch.device('cuda' if use_cuda else 'cpu')
 construction = '$CONSTRUCTION'
 pt = '$PT'
-graph_indir = 'hitgraphs/{}_{}/'.format(construction, pt)
+graph_indir = 'hitgraphs_for_timing/{}_{}/'.format(construction, pt)
 graph_files = np.array(os.listdir(graph_indir))
 n_graphs = len(graph_files)
 IDs = np.arange(n_graphs)
