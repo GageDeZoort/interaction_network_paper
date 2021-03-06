@@ -22,7 +22,7 @@
   ```
   python run_interaction_network.py --pt=1 --construction=heptrkx_plus --lr=0.005 --gamma=0.9 --save-model 
   ```
-- inference timing usage:
+- timing_scan_bash.py: inference timing script, example usage:
   - CPU-only inference:
     ```
     python timing_scan_bash.py --construction=heptrkx_plus --graphs=3 --batchsize=6
