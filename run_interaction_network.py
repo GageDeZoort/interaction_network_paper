@@ -1,7 +1,6 @@
 from __future__ import print_function
 import os
 from time import time
-import timeit
 import argparse
 import torch
 import torch.nn as nn
@@ -20,8 +19,8 @@ def train(args, model, device, train_loader, optimizer, epoch):
     for batch_idx, (data, target) in enumerate(train_loader):
         X, Ra = data['X'].to(device), data['Ra'].to(device)
         Ri, Ro = data['Ri'].to(device), data['Ro'].to(device)
-        #target = target['y'].to(device)
-        target = target.to(device)
+        target = target['y'].to(device)
+        #target = target.to(device)
         #print('train graph: X.shape={}, Ra.shape={}, Ri.shape={}, Ro.shape={}, y.shape={}'
         #      .format(X.shape, Ra.shape, Ri.shape, Ro.shape, target.shape))
         optimizer.zero_grad()
@@ -43,8 +42,8 @@ def validate(model, device, val_loader):
     for data, target in val_loader:
         X, Ra = data['X'].to(device), data['Ra'].to(device)
         Ri, Ro = data['Ri'].to(device), data['Ro'].to(device)
-        #target = target['y'].to(device)
-        target = target.to(device)
+        target = target['y'].to(device)
+        #target = target.to(device)
         output = model(X, Ra.float(), Ri.float(), Ro.float())
         N_correct = torch.sum((target==1).squeeze() & (output>0.5).squeeze())
         N_correct += torch.sum((target==0).squeeze() & (output<0.5).squeeze())
@@ -71,25 +70,17 @@ def validate(model, device, val_loader):
     print("val accuracy=", (N_tp+N_tn)/(N_tp+N_tn+N_fp+N_fn))
     return np.mean(best_discs)
    
-def test(acc, model, device, test_loader, disc=0.5):
+def test(model, device, test_loader, disc=0.5):
     model.eval()
     test_loss = 0
     accuracy = 0
-    count = 0
     with torch.no_grad():
         for data, target in test_loader:
             X, Ra = data['X'].to(device), data['Ra'].to(device)
             Ri, Ro = data['Ri'].to(device), data['Ro'].to(device)
-            #target = target['y'].to(device)
-            target = target.to(device)
+            target = target['y'].to(device)
+            #target = target.to(device)
             output = model(X, Ra.float(), Ri.float(), Ro.float())
-            temp = timeit.timeit('output')
-            acc.append(temp)
-            print(acc[count])
-            timings = open("cpu_timing.txt", "a")
-            timings.write("{0}s \n".format(acc[count]))
-            timings.close()
-            count = count + 1
             N_correct = torch.sum((target==1).squeeze() & (output>0.5).squeeze())
             N_correct += torch.sum((target==0).squeeze() & (output<0.5).squeeze())
             N_total = target.shape[1]
@@ -152,18 +143,18 @@ def main():
         train_kwargs.update(cuda_kwargs)
         test_kwargs.update(cuda_kwargs)
 
-    graph_indir = "/interactionnetworkvol/interaction_network_paper/hitgraphs/{}_{}/".format(args.construction, args.pt)
+    graph_indir = "/scratch/gpfs/jdezoort/hitgraphs/{}_{}/".format(args.construction, args.pt)
     #graph_indir = "/tigress/jdezoort/IN_samples_endcaps/IN_LP_{}/".format(args.pt)
     graph_files = np.array(os.listdir(graph_indir))
     n_graphs = len(graph_files)
 
     IDs = np.arange(n_graphs)
     np.random.shuffle(IDs)
-    partition = {'train': graph_files[IDs[:1]],  
-                 'test':  graph_files[IDs[:100]],
-                 'val': graph_files[IDs[:1]]}
+    partition = {'train': graph_files[IDs[:1000]],  
+                 'test':  graph_files[IDs[1000:1400]],
+                 'val': graph_files[IDs[1400:1500]]}
 
-    params = {'batch_size': 1, 'shuffle': True, 'num_workers': 0}#6}
+    params = {'batch_size': 1, 'shuffle': True, 'num_workers': 6}
     train_set = Dataset(graph_indir, partition['train']) 
     train_loader = torch.utils.data.DataLoader(train_set, **params)
     test_set = Dataset(graph_indir, partition['test'])
@@ -178,14 +169,11 @@ def main():
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
     scheduler = StepLR(optimizer, step_size=5, gamma=args.gamma)
 
-    time_acc = []
-
     for epoch in range(1, args.epochs + 1):
         train(args, model, device, train_loader, optimizer, epoch)
         disc = validate(model, device, val_loader)
         print('optimal discriminant', disc)
-        test(time_acc, model, device, test_loader, disc=disc)
-        times.append(time_acc)
+        test(model, device, test_loader, disc=disc)
         scheduler.step()
     
         if args.save_model:

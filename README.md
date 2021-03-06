@@ -25,9 +25,9 @@
 - inference timing usage:
   - CPU-only inference:
     ```
-    python timing_scan.py
+    python timing_scan_bash.py --construction=heptrkx_plus --graphs=3 --batchsize=6
     ```
   - GPU inference:
     ```
-    python timing_scan.py --gpu
+    python timing_scan_bash.py --gpu --construction=heptrkx_plus --graphs=3 --batchsize=6
     ```
