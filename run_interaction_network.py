@@ -25,68 +25,71 @@ def train(args, model, device, train_loader, optimizer, epoch):
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx, len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
+            #print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+            #    epoch, batch_idx, len(train_loader.dataset),
+            #    100. * batch_idx / len(train_loader), loss.item()))
             if args.dry_run:
                 break
         losses.append(loss.item())
     print("...epoch time: {0}s".format(time()-epoch_t0))
     print("...epoch {}: train loss={}".format(epoch, np.mean(losses)))
+    return np.mean(losses)
 
 def validate(model, device, val_loader):
     model.eval()
-    best_discs = []
+    opt_thlds = []
     for batch_idx, data in enumerate(val_loader):
         data = data.to(device)
         output = model(data)
-        N_correct = torch.sum((data.y==1).squeeze() & (output>0.5).squeeze())
-        N_correct += torch.sum((data.y==0).squeeze() & (output<0.5).squeeze())
-        N_total = data.y.shape[0]
         loss = F.binary_cross_entropy(output.squeeze(1), data.y)
         
-        diff, best_disc = 100, 0
+        # define optimal threshold (thld) where TPR = TNR 
+        diff, opt_thld = 100, 0
         best_tpr, best_tnr = 0, 0
-        for disc in np.arange(0.2, 0.8, 0.01):
-            true_pos = ((data.y==1).squeeze() & (output>disc).squeeze())
-            true_neg = ((data.y==0).squeeze() & (output<disc).squeeze())
-            false_pos = ((data.y==0).squeeze() & (output>disc).squeeze())
-            false_neg = ((data.y==1).squeeze() & (output<disc).squeeze())
-            N_tp, N_tn = torch.sum(true_pos).item(), torch.sum(true_neg).item()
-            N_fp, N_fn = torch.sum(false_pos).item(), torch.sum(false_neg).item()
-            true_pos_rate = N_tp/(N_tp + N_fn)
-            true_neg_rate = N_tn/(N_tn + N_fp)
-            delta = abs(true_pos_rate - true_neg_rate)
-            if (delta < diff):
-                diff, best_disc = delta, disc
-        best_discs.append(best_disc)
+        for thld in np.arange(0.001, 0.5, 0.001):
+            TP = torch.sum((data.y==1).squeeze() & 
+                           (output>thld).squeeze()).item()
+            TN = torch.sum((data.y==0).squeeze() & 
+                           (output<thld).squeeze()).item()
+            FP = torch.sum((data.y==0).squeeze() & 
+                           (output>thld).squeeze()).item()
+            FN = torch.sum((data.y==1).squeeze() & 
+                           (output<thld).squeeze()).item()
 
-    print("...val accuracy=", (N_tp+N_tn)/(N_tp+N_tn+N_fp+N_fn))
-    return np.mean(best_discs)
+            TPR, TNR = TP/(TP+FN), TN/(TN+FP)
+            delta = abs(TPR-TNR)
+            if (delta < diff): diff, opt_thld = delta, thld
+        
+        opt_thlds.append(opt_thld)
 
-def test(model, device, test_loader, disc=0.5):
+    print("...val accuracy=", (TP+TN)/(TP+TN+FP+FN))
+    return np.mean(opt_thlds) 
+
+def test(model, device, test_loader, thld=0.5):
     model.eval()
-    test_loss = 0
-    accuracy = 0
+    losses, accs = [], []
     with torch.no_grad():
         for batch_idx, data in enumerate(test_loader):
             data = data.to(device)
             output = model(data)
-            N_correct = torch.sum((data.y==1).squeeze() & (output>0.5).squeeze())
-            N_correct += torch.sum((data.y==0).squeeze() & (output<0.5).squeeze())
-            N_total = data.y.shape[0]
-            accuracy += torch.sum(((data.y==1).squeeze() &
-                                   (output>disc).squeeze()) |
-                                  ((data.y==0).squeeze() &
-                                   (output<disc).squeeze())).float()/data.y.shape[0]
-            test_loss += F.binary_cross_entropy(output.squeeze(1), data.y,
-                                                reduction='mean').item()
+            TP = torch.sum((data.y==1).squeeze() & 
+                           (output>thld).squeeze()).item()
+            TN = torch.sum((data.y==0).squeeze() & 
+                           (output<thld).squeeze()).item()
+            FP = torch.sum((data.y==0).squeeze() & 
+                           (output>thld).squeeze()).item()
+            FN = torch.sum((data.y==1).squeeze() & 
+                           (output<thld).squeeze()).item()            
+            acc = (TP+TN)/(TP+TN+FP+FN)
+            loss = F.binary_cross_entropy(output.squeeze(1), data.y, 
+                                          reduction='mean').item()
+            accs.append(acc)
+            losses.append(loss)
+            #print(f"acc={TP+TN}/{TP+TN+FP+FN}={acc}")
 
-    test_loss /= len(test_loader)
-    accuracy /= len(test_loader)
     print('...test loss: {:.4f}\n...test accuracy: {:.4f}'
-          .format(test_loss, accuracy))
-
+          .format(np.mean(losses), np.mean(accs)))
+    return np.mean(losses), np.mean(accs)
 
 def main():
 
@@ -118,6 +121,8 @@ def main():
                         help='For Saving the current Model')
     parser.add_argument('--construction', type=str, default='heptrkx_classic',
                         help='graph construction method')
+    parser.add_argument('--sample', type=int, default=1, 
+                        help='TrackML train_{} sample to train on')
 
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
@@ -138,7 +143,7 @@ def main():
         
 
     home_dir = "/scratch/gpfs/jdezoort"
-    indir = "{}/hitgraphs/{}_{}/".format(home_dir, args.construction, args.pt)
+    indir = "{}/hitgraphs_{}/{}_{}/".format(home_dir, args.sample, args.construction, args.pt)
     
     graph_files = np.array(os.listdir(indir))
     graph_files = np.array([os.path.join(indir, graph_file)
@@ -170,19 +175,29 @@ def main():
     scheduler = StepLR(optimizer, step_size=args.step_size,
                        gamma=args.gamma)
 
+
+    output = {'train_loss': [], 'test_loss': [], 'test_acc': []}
     for epoch in range(1, args.epochs + 1):
         print("---- Epoch {} ----".format(epoch))
-        train(args, model, device, train_loader, optimizer, epoch)
-        disc = validate(model, device, val_loader)
-        print('...optimal discriminant', disc)
-        test(model, device, test_loader, disc=disc)
+        train_loss = train(args, model, device, train_loader, optimizer, epoch)
+        thld = validate(model, device, val_loader)
+        print('...optimal threshold', thld)
+        test_loss, test_acc = test(model, device, test_loader, thld=thld)
         scheduler.step()
         
         if args.save_model:
             torch.save(model.state_dict(),
-                       "trained_models/train1v3_40hu_{}_epoch{}_{}GeV.pt"
-                       .format(args.construction, epoch, args.pt))
-                
+                       "trained_models/train{}_PyG_{}_epoch{}_{}GeV.pt"
+                       .format(args.sample, args.construction, epoch, args.pt))
+
+        output['train_loss'].append(train_loss)
+        output['test_loss'].append(test_loss)
+        output['test_acc'].append(test_acc)
+    
+        np.save('train_output/train{}_PyG_{}_{}GeV'
+                .format(args.sample, args.construction, args.pt),
+                output)
+
 
 if __name__ == '__main__':
     main()

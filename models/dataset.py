@@ -2,6 +2,8 @@ import os
 import torch
 import numpy as np
 from torch_geometric.data import Data, Dataset
+from torch_geometric.utils import to_undirected
+from torch_geometric.transforms import ToUndirected
 
 class GraphDataset(Dataset):
     def __init__(self, transform=None, pre_transform=None,
@@ -25,16 +27,32 @@ class GraphDataset(Dataset):
             #x, edge_attr, y, pid = f['X'], f['Ra'], f['y'], f['pid']
             x = torch.from_numpy(f['x'])#, dtype=torch.float32)
             edge_attr = torch.from_numpy(f['edge_attr'])#, dtype=torch.float32)
-            #Ro_rows = torch.from_numpy(f['Ro_rows'])#, dtype=torch.uint8)
-            #Ri_rows = torch.from_numpy(f['Ri_rows'])#, dtype=torch.uint8)
-            #edge_index = torch.stack((Ro_rows, Ri_rows))
             edge_index = torch.from_numpy(f['edge_index'])
             y = torch.from_numpy(f['y'])#, dtype=torch.uint8)
             pid = torch.from_numpy(f['pid'])#, dtype=torch.uint8)
+
+            #print('before',
+            #      '\nedge_index:', edge_index.shape,
+            #      '\nedge_attr:', edge_attr.shape,
+            #      '\ny:', y.shape)
+
+
+            # make graph undirected
+            row, col = edge_index
+            row, col = torch.cat([row, col], dim=0), torch.cat([col, row], dim=0)
+            edge_index = torch.stack([row, col], dim=0)
+            edge_attr = torch.cat([edge_attr, -1*edge_attr], dim=1)
+            y = torch.cat([y,y])
 
             data = Data(x=x, edge_index=edge_index,
                         edge_attr=torch.transpose(edge_attr, 0, 1),
                         y=y, pid=pid)
             data.num_nodes = len(x)
+            #print('after',
+            #      '\nedge_index:', data.edge_index.shape,
+            #      '\nedge_attr:', data.edge_attr.shape,
+            #      '\ny:', data.y.shape)
+                  
+            
 
         return data        
