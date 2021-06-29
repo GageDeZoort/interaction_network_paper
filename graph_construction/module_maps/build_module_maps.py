@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 import pandas as pd
 import trackml
@@ -18,8 +19,8 @@ layer_pairs = [(0,1), (1,2), (2,3),
                (11,12), (12,13), (13,14), (14,15), (15,16), (16,17)]
 
 
-pt_min = 1.1
-train_sample = 1
+pt_min = float(sys.argv[1])
+train_sample = 2
 indir = '/tigress/jdezoort/train_{}'.format(train_sample)
 evtid_base = 'event00000'
 evtids = os.listdir(indir) #[evtid_base+str(i) for i in np.arange(1000, , 1)]
@@ -87,5 +88,5 @@ pt_lookup = {0.5: '0p5', 0.6: '0p6', 0.7: '0p7', 0.8: '0p8',
              1.7: '1p7', 1.8: '1p8', 1.9: '1p9', 2.0: '2'}
 
 pt_str = pt_lookup[pt_min]
-with open(f'module_map_{train_sample}_{pt_str}GeV.npy', 'wb') as f:
+with open(f'module_maps/module_map_{train_sample}_{pt_str}GeV.npy', 'wb') as f:
     np.save(f, module_maps)
