@@ -26,7 +26,7 @@ import time
 from collections import namedtuple
 import numpy as np
 
-Graph = namedtuple('Graph', ['x', 'edge_attr', 'edge_index', 'y', 'pid'])
+Graph = namedtuple('Graph', ['x', 'edge_attr', 'edge_index', 'y', 'pid', 'pt'])
 
 def parse_args():
     """Parse command line arguments."""
@@ -40,7 +40,7 @@ def parse_args():
     add_arg('--show-config', action='store_true')
     add_arg('--interactive', action='store_true')
     add_arg('--start-evtid', type=int, default=1000)
-    add_arg('--end-evtid', type=int, default=2800)
+    add_arg('--end-evtid', type=int, default=3000)
     return parser.parse_args()
 
 def calc_dphi(phi1, phi2):
@@ -156,6 +156,7 @@ def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
 
     # Fill the segment, particle labels
     pid = hits.particle_id
+    pt = hits.pt
     unique_pid_map = {pid_old: pid_new 
                       for pid_new, pid_old in enumerate(np.unique(pid.values))}
     pid_mapped = pid.map(unique_pid_map)
@@ -210,7 +211,8 @@ def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
     print("y.shape", y.shape)
     print("edge_attr.shape", edge_attr.shape)
     print("pid.shape", pid_mapped.shape)
-    return Graph(X, edge_attr, edge_index, y, pid_mapped)
+    print("pt.shape", pt, pt.shape)
+    return Graph(X, edge_attr, edge_index, y, pid_mapped, pt)
 
 def select_hits(hits, truth, particles, pt_min=0, endcaps=False):
     # Barrel volume and layer ids
@@ -232,18 +234,19 @@ def select_hits(hits, truth, particles, pt_min=0, endcaps=False):
                       for i in range(n_det_layers)])
     # Calculate particle transverse momentum
     pt = np.sqrt(particles.px**2 + particles.py**2)
+    particles['pt'] = pt
     # True particle selection.
     # Applies pt cut, removes all noise hits.
     particles = particles[pt > pt_min]
     truth = (truth[['hit_id', 'particle_id']]
-             .merge(particles[['particle_id']], on='particle_id'))
+             .merge(particles[['particle_id', 'pt']], on='particle_id'))
     # Calculate derived hits variables
     r = np.sqrt(hits.x**2 + hits.y**2)
     phi = np.arctan2(hits.y, hits.x)
     # Select the data columns we need
     hits = (hits[['hit_id', 'z', 'layer']]
             .assign(r=r, phi=phi)
-            .merge(truth[['hit_id', 'particle_id']], on='hit_id'))
+            .merge(truth[['hit_id', 'particle_id', 'pt']], on='hit_id'))
     # Remove duplicate hits
     hits = hits.loc[
         hits.groupby(['particle_id', 'layer'], as_index=False).r.idxmin()
