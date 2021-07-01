@@ -37,14 +37,14 @@ def train(args, model, device, train_loader, optimizer, epoch):
 
 def validate(model, device, val_loader):
     model.eval()
-    opt_thlds = []
+    opt_thlds, accs = [], []
     for batch_idx, data in enumerate(val_loader):
         data = data.to(device)
         output = model(data)
         loss = F.binary_cross_entropy(output.squeeze(1), data.y)
         
         # define optimal threshold (thld) where TPR = TNR 
-        diff, opt_thld = 100, 0
+        diff, opt_thld, opt_acc = 100, 0, 0
         best_tpr, best_tnr = 0, 0
         for thld in np.arange(0.001, 0.5, 0.001):
             TP = torch.sum((data.y==1).squeeze() & 
@@ -55,14 +55,16 @@ def validate(model, device, val_loader):
                            (output>thld).squeeze()).item()
             FN = torch.sum((data.y==1).squeeze() & 
                            (output<thld).squeeze()).item()
-
+            acc = (TP+TN)/(TP+TN+FP+FN)
             TPR, TNR = TP/(TP+FN), TN/(TN+FP)
             delta = abs(TPR-TNR)
-            if (delta < diff): diff, opt_thld = delta, thld
+            if (delta < diff): diff, opt_thld, opt_acc = delta, thld, acc
         
-        opt_thlds.append(opt_thld)
 
-    print("...val accuracy=", (TP+TN)/(TP+TN+FP+FN))
+        opt_thlds.append(opt_thld)
+        accs.append(acc)
+
+    print("...val accuracy=", np.mean(accs))
     return np.mean(opt_thlds) 
 
 def test(model, device, test_loader, thld=0.5):
@@ -123,6 +125,8 @@ def main():
                         help='graph construction method')
     parser.add_argument('--sample', type=int, default=1, 
                         help='TrackML train_{} sample to train on')
+    parser.add_argument('--hidden-size', type=int, default=40,
+                        help='Number of hidden units per layer')
 
     args = parser.parse_args()
     use_cuda = not args.no_cuda and torch.cuda.is_available()
@@ -167,7 +171,7 @@ def main():
     val_set = GraphDataset(graph_files=partition['val'])
     val_loader = DataLoader(val_set, **params)
     
-    model = InteractionNetwork().to(device)
+    model = InteractionNetwork(args.hidden_size).to(device)
     total_trainable_params = sum(p.numel() for p in model.parameters())
     print('total trainable params:', total_trainable_params)
     
@@ -187,15 +191,17 @@ def main():
         
         if args.save_model:
             torch.save(model.state_dict(),
-                       "trained_models/train{}_PyG_{}_epoch{}_{}GeV.pt"
-                       .format(args.sample, args.construction, epoch, args.pt))
+                       "trained_models/train{}_{}hu_PyG_{}_epoch{}_{}GeV.pt"
+                       .format(args.sample, args.hidden_size, 
+                               args.construction, epoch, args.pt))
 
         output['train_loss'].append(train_loss)
         output['test_loss'].append(test_loss)
         output['test_acc'].append(test_acc)
     
-        np.save('train_output/train{}_PyG_{}_{}GeV'
-                .format(args.sample, args.construction, args.pt),
+        np.save('train_output/train{}_{}hu_PyG_{}_{}GeV'
+                .format(args.sample, args.hidden_size,
+                        args.construction, args.pt),
                 output)
 
 
