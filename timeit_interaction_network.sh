@@ -1,5 +1,5 @@
 #!/bin/bash
-PT="1GeV"
+PT="0GeV6"
 BATCHSIZE=1
 GRAPHBATCHNUM=2
 CONSTRUCTION="heptrkx_plus_pyg"

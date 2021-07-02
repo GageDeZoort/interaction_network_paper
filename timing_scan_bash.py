@@ -12,8 +12,7 @@ parser.add_argument('--gpu', action='store_true', default=False,
                     help='perform inference on GPU')
 args = parser.parse_args()
 
-pts = ['1GeV']
-#pts = ['2GeV', '1GeV5', '1GeV', '0GeV75', '0GeV6', '0GeV5']
+pts = ['2GeV', '1GeV5', '1GeV', '0GeV75', '0GeV6', '0GeV5']
 
 for pt in pts:
   file = open("timeit_interaction_network.sh", "r")
@@ -38,7 +37,7 @@ for pt in pts:
   outfile = open(filename, "w")
   outfile.write(title)
   outfile.close()
-  for x in range(0,3):
+  for x in range(0,5):
     file = open("timeit_interaction_network.sh", "r")
     lines = file.readlines()
     lines[3] = "GRAPHBATCHNUM={}\n".format(x)
@@ -74,3 +73,4 @@ for pt in pts:
   std = np.std(acc)
 
   print("average {} inference time (pt cut = {}, model = {}) = {} +/- {} msec".format(device, pt, args.construction, avg, std)) 
+  os.system("echo 'average {} inference time (pt cut = {}, model = {}) = {} +/- {} msec' >> {}".format(device, pt, args.construction, avg, std, filename))
