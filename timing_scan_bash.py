@@ -10,6 +10,12 @@ parser.add_argument('--construction', type=str, default='heptrkx_plus_pyg',
                     help='graph construction method')
 parser.add_argument('--gpu', action='store_true', default=False,
                     help='perform inference on GPU')
+parser.add_argument('--graphs', type=int, default=5,
+                    help='number of different graphs to average results over')
+parser.add_argument('--loops', type=int, default=100,
+                    help='number of executions to loop for timing test; see https://docs.python.org/3/library/timeit.html')
+parser.add_argument('--repeat', type=int, default=5,
+                    help='number of repetitions of execution loop to find best timing; see https://docs.python.org/3/library/timeit.html')
 args = parser.parse_args()
 
 pts = ['2GeV', '1GeV5', '1GeV', '0GeV75', '0GeV6', '0GeV5']
@@ -21,6 +27,8 @@ for pt in pts:
   lines[2] = "BATCHSIZE={}\n".format(args.batchsize)
   lines[4] = 'CONSTRUCTION="{}"\n'.format(args.construction)
   lines[5] = "CUDA={}\n".format(1 if args.gpu else 0)
+  lines[6] = "NUMBER={}\n".format(args.loops)
+  lines[7] = "REPEAT={}\n".format(args.repeat)
   file = open("timeit_interaction_network.sh", "w")
   file.writelines(lines)
   file.close()

@@ -22,3 +22,22 @@
   ```
   python run_interaction_network.py --pt=1 --construction=heptrkx_plus --lr=0.005 --gamma=0.9 --save-model 
   ```
+
+- timing_scan_bash.py: inference timing script, example usage:
+  - CPU-only inference:
+    ```
+    python timing_scan_bash.py --construction=heptrkx_plus_pyg --graphs=5 --batchsize=1 --loops=100 --repeat=5
+    ```
+  - GPU inference:
+    ```
+    python timing_scan_bash.py --gpu --construction=heptrkx_plus_pyg --graphs=5 --batchsize=1 --loops=100 --repeat=5
+    ```
+  - Note, the code assumes some hitgraphs are located in the following directory structure
+```
+hitgraphs
+├── heptrkx_plus_pyg_0GeV5
+├── heptrkx_plus_pyg_0GeV6
+├── heptrkx_plus_pyg_0GeV75
+├── heptrkx_plus_pyg_1GeV
+└── heptrkx_plus_pyg_1GeV
+```
