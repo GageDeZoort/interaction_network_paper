@@ -34,7 +34,7 @@ model_paths = [model for model in models if 'epoch250' in model]
 models_by_pt = {model.split('.')[0].split('_')[-1].strip('GeV'): model for model in model_paths}
 
 # initial discriminants (won't matter in the end)
-thlds = {'2': 0.2185, '1p5': 0.1657, '1': 0.0505, '0p9': 0.0447, '0p8': 0.03797, '0p7': 0.02275, '0p6': 0.01779}
+thlds = {'2': 0.2185, '1p5': 0.17994, '1': 0.0505, '0p9': 0.0447, '0p8': 0.03797, '0p7': 0.02275, '0p6': 0.01779}
 device = "cpu"
 
 pt_min = sys.argv[1]
@@ -64,16 +64,19 @@ pt_bins = np.array([0.6, 0.8, 1, 1.2, 1.5, 1.8, 2.1, 2.5, 3,
 
 pt_bin_centers = (pt_bins[1:] + pt_bins[:-1])/2.
 effs_by_pt = {'tight': [],
-              'exa': []}
+              'exa': [],
+              'cms': []}
 
 cms_effs, tight_effs, exa_effs = [], [], []
 with torch.no_grad():
     counter = 0
 
     found_by_pt = {'tight': np.zeros(len(pt_bin_centers)),
-                   'exa': np.zeros(len(pt_bin_centers))}
+                   'exa': np.zeros(len(pt_bin_centers)),
+                   'cms': np.zeros(len(pt_bin_centers))}
     missed_by_pt = {'tight': np.zeros(len(pt_bin_centers)),
-                    'exa': np.zeros(len(pt_bin_centers))}
+                    'exa': np.zeros(len(pt_bin_centers)),
+                    'cms': np.zeros(len(pt_bin_centers))}
 
     for batch_idx, data in enumerate(test_loader):
         data = data.to(device)
@@ -100,7 +103,9 @@ with torch.no_grad():
         pid_found_map = {'tight': {p.item(): False for p in unique_pids
                                    if pid_counts_map[p.item()] >= 1},
                          'exa': {p.item(): False for p in unique_pids
-                                   if pid_counts_map[p.item()] >= 1}}
+                                 if pid_counts_map[p.item()] >= 1},
+                         'cms': {p.item(): False for p in unique_pids
+                                 if pid_counts_map[p.item()] >= 1}}
 
         hit_idx = torch.unsqueeze(torch.arange(X.shape[0]), dim=1)
         X = torch.cat((hit_idx.float(), X), dim=1)
@@ -160,6 +165,8 @@ with torch.no_grad():
             
             if selected_pid_fraction > 0.75:
                 cms_clusters += 1 # all hits have the same pid
+                pid_found_map['cms'][selected_pid] = True
+
                 if pid_counts_map[selected_pid] == len(label_pids):
                     tight_clusters += 1 # all required hits for pid
                     pid_found_map['tight'][selected_pid] = True
