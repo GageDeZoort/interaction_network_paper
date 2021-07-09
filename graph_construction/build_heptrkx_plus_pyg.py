@@ -26,7 +26,7 @@ import time
 from collections import namedtuple
 import numpy as np
 
-Graph = namedtuple('Graph', ['x', 'edge_attr', 'edge_index', 'y', 'pid', 'pt'])
+Graph = namedtuple('Graph', ['x', 'edge_attr', 'edge_index', 'y', 'pid', 'pt', 'eta'])
 
 def parse_args():
     """Parse command line arguments."""
@@ -81,7 +81,7 @@ def select_segments(hits1, hits2, phi_slope_max, z0_max,
     dR = np.sqrt(deta**2 + dphi**2)
     phi_slope = dphi / dr
     z0 = hit_pairs.z_1 - hit_pairs.r_1 * dz / dr
-    #print("max(z0) = ", np.max(abs(z0)))
+    
     # Apply the intersecting line cut
     intersected_layer = dr.abs() < -1 
     if remove_intersecting_edges:
@@ -157,6 +157,7 @@ def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
     # Fill the segment, particle labels
     pid = hits.particle_id
     pt = hits.pt
+    eta = hits.eta
     unique_pid_map = {pid_old: pid_new 
                       for pid_new, pid_old in enumerate(np.unique(pid.values))}
     pid_mapped = pid.map(unique_pid_map)
@@ -212,7 +213,8 @@ def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
     print("edge_attr.shape", edge_attr.shape)
     print("pid.shape", pid_mapped.shape)
     print("pt.shape", pt, pt.shape)
-    return Graph(X, edge_attr, edge_index, y, pid_mapped, pt)
+    print("eta.shape", eta, eta.shape)
+    return Graph(X, edge_attr, edge_index, y, pid_mapped, pt, eta)
 
 def select_hits(hits, truth, particles, pt_min=0, endcaps=False):
     # Barrel volume and layer ids
@@ -235,18 +237,21 @@ def select_hits(hits, truth, particles, pt_min=0, endcaps=False):
     # Calculate particle transverse momentum
     pt = np.sqrt(particles.px**2 + particles.py**2)
     particles['pt'] = pt
+    eta = calc_eta(pt, particles.pz)
+    particles['eta'] = eta
+
     # True particle selection.
     # Applies pt cut, removes all noise hits.
     particles = particles[pt > pt_min]
     truth = (truth[['hit_id', 'particle_id']]
-             .merge(particles[['particle_id', 'pt']], on='particle_id'))
+             .merge(particles[['particle_id', 'pt', 'eta']], on='particle_id'))
     # Calculate derived hits variables
     r = np.sqrt(hits.x**2 + hits.y**2)
     phi = np.arctan2(hits.y, hits.x)
     # Select the data columns we need
     hits = (hits[['hit_id', 'z', 'layer']]
             .assign(r=r, phi=phi)
-            .merge(truth[['hit_id', 'particle_id', 'pt']], on='hit_id'))
+            .merge(truth[['hit_id', 'particle_id', 'pt', 'eta']], on='hit_id'))
     # Remove duplicate hits
     hits = hits.loc[
         hits.groupby(['particle_id', 'layer'], as_index=False).r.idxmin()
@@ -338,7 +343,7 @@ def process_event(prefix, output_dir, pt_min, n_eta_sections, n_phi_sections,
     for graph, filename in zip(graphs, filenames):
         np.savez(filename, ** dict(x=graph.x, edge_attr=graph.edge_attr,
                                    edge_index=graph.edge_index, 
-                                   y=graph.y, pid=graph.pid))
+                                   y=graph.y, pid=graph.pid, pt=graph.pt, eta=graph.eta))
         print(filename)
 
     #save_graphs(graphs, filenames)
