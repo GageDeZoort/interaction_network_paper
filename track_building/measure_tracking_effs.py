@@ -58,14 +58,18 @@ params = {'batch_size': 1, 'shuffle': True, 'num_workers': 6}
 test_set = GraphDataset(graph_files=graph_files) 
 test_loader = DataLoader(test_set, **params)
 
-
 pt_bins = np.array([0.6, 0.8, 1, 1.2, 1.5, 1.8, 2.1, 2.5, 3,
                     3, 3.5, 4, 5, 6, 8, 10, 15, 25, 40, 60, 100, 150])
-
 pt_bin_centers = (pt_bins[1:] + pt_bins[:-1])/2.
 effs_by_pt = {'tight': [],
               'exa': [],
               'cms': []}
+
+eta_bins = np.linspace(-4,4,20)
+eta_bin_centers = (eta_bins[1:] + eta_bins[:-1])/2.
+effs_by_eta = {'tight': [],
+               'exa': [],
+               'cms': []}
 
 cms_effs, tight_effs, exa_effs = [], [], []
 with torch.no_grad():
@@ -77,6 +81,12 @@ with torch.no_grad():
     missed_by_pt = {'tight': np.zeros(len(pt_bin_centers)),
                     'exa': np.zeros(len(pt_bin_centers)),
                     'cms': np.zeros(len(pt_bin_centers))}
+    found_by_eta = {'tight': np.zeros(len(eta_bin_centers)),
+                    'exa': np.zeros(len(eta_bin_centers)),
+                    'cms': np.zeros(len(eta_bin_centers))}
+    missed_by_eta = {'tight': np.zeros(len(eta_bin_centers)),
+                     'exa': np.zeros(len(eta_bin_centers)),
+                     'cms': np.zeros(len(eta_bin_centers))}
 
     for batch_idx, data in enumerate(test_loader):
         data = data.to(device)
@@ -94,12 +104,14 @@ with torch.no_grad():
                                       reduction='mean').item()
         
         # count hits per pid in each event, add indices to hits
-        X, pids, idxs, pts = data.x, data.pid, data.edge_index[:,:cutoff], data.pt
+        X, pids, idxs = data.x, data.pid, data.edge_index[:,:cutoff]
+        pts, etas, = data.pt, data.eta
         unique_pids = torch.unique(pids)
         pid_counts_map = {p.item(): torch.sum(pids==p).item() for p in unique_pids}
         n_particles = np.sum([counts >= 1 for counts in pid_counts_map.values()])
         pid_label_map = {p.item(): -5 for p in unique_pids}
         pid_pt_map = {pids[i].item(): pts[i].item() for i in range(len(pids))}
+        pid_eta_map = {pids[i].item(): etas[i].item() for i in range(len(etas))}
         pid_found_map = {'tight': {p.item(): False for p in unique_pids
                                    if pid_counts_map[p.item()] >= 1},
                          'exa': {p.item(): False for p in unique_pids
@@ -107,6 +119,7 @@ with torch.no_grad():
                          'cms': {p.item(): False for p in unique_pids
                                  if pid_counts_map[p.item()] >= 1}}
 
+        #print(np.histogram(list(pid_eta_map.values())))
         hit_idx = torch.unsqueeze(torch.arange(X.shape[0]), dim=1)
         X = torch.cat((hit_idx.float(), X), dim=1)
         
@@ -123,14 +136,6 @@ with torch.no_grad():
         eta_i = calc_eta(r_i, z_i)
         dphi, deta = calc_dphi(phi_o, phi_i), eta_i-eta_o
         distances = torch.sqrt(dphi**2 + deta**2)
-        #feature_scale = [1000., np.pi, 1000.]
-        #r_o, phi_o, z_o = feats_o[:,1], feats_o[:,2], feats_o[:,3]
-        #r_i, phi_i, z_i = feats_i[:,1], feats_i[:,2], feats_i[:,3]
-        #distances = torch.sqrt((r_i*torch.cos(np.pi*phi_i) - r_o*torch.cos(np.pi*phi_o))**2 +
-        #                       (r_i*torch.sin(np.pi*phi_i) - r_i*torch.sin(np.pi*phi_i))**2 +
-        #                       (z_i-z_o)**2)
-        
-        print(np.histogram(distances[torch.logical_and((distances<100), (distances>0))]))
         dist_matrix = 100*torch.ones(X.shape[0], X.shape[0])
         for i in range(dist_matrix.shape[0]): dist_matrix[i][i]=0
             
@@ -180,16 +185,26 @@ with torch.no_grad():
         for d, pid_found in pid_found_map.items():
             for key, val in pid_found.items():
                 pid_pt = pid_pt_map[key]
+                pid_eta = pid_eta_map[key]
                 for j in range(len(pt_bins)-1):
                     if (pid_pt < pt_bins[j+1]) and (pid_pt > pt_bins[j]):
                         if val==True: 
                             found_by_pt[d][j]+=1
                         else:
                             missed_by_pt[d][j]+=1
+                for j in range(len(eta_bins)-1):
+                    if (pid_eta < eta_bins[j+1]) and (pid_eta > eta_bins[j]):
+                        if val==True:
+                            found_by_eta[d][j]+=1
+                        else:
+                            missed_by_eta[d][j]+=1
 
             eff_by_pt = found_by_pt[d]/(found_by_pt[d]+missed_by_pt[d])
+            eff_by_eta = found_by_eta[d]/(found_by_eta[d]+missed_by_eta[d])
             print(d, np.sum(found_by_pt[d])/(np.sum(found_by_pt[d])+np.sum(missed_by_pt[d])))
+            print(d, np.sum(found_by_eta[d])/(np.sum(found_by_eta[d])+np.sum(missed_by_eta[d])))
             effs_by_pt[d].append(eff_by_pt)
+            effs_by_eta[d].append(eff_by_eta)
 
         cms_effs.append(cms_clusters/n_particles)
         tight_effs.append(tight_clusters/n_particles)
@@ -202,7 +217,7 @@ print("CMS Eff: {:.4f}+/-{:4f}".format(np.mean(cms_effs), np.std(cms_effs)))
 print("Tight Eff: {:.4f}+/-{:.4f}".format(np.mean(tight_effs), np.std(tight_effs)))
 print("Exa Eff: {:.4f}+/-{:.4f}".format(np.mean(exa_effs), np.std(exa_effs)))
 
-output = {}
+pt_output = {}
 for d, effs in effs_by_pt.items():
     print("Clustering Method:", d)
     effs = np.array(effs)
@@ -213,9 +228,27 @@ for d, effs in effs_by_pt.items():
               mean_effs[i], ' +- ', 
               std_effs[i])
 
-    output[d] = {'bins': pt_bins,
-                 'bin_centers': pt_bin_centers,
-                 'effs_mean': mean_effs,
-                 'effs_std': std_effs}
-    
+    pt_output[d] = {'bins': pt_bins,
+                    'bin_centers': pt_bin_centers,
+                    'effs_mean': mean_effs,
+                    'effs_std': std_effs}
+        
+
+eta_output = {}
+for d, effs in effs_by_eta.items():
+    print("Clustering Method:", d)
+    effs = np.array(effs)
+    mean_effs = np.nanmean(effs, axis=0)
+    std_effs = np.nanstd(effs, axis=0)
+    for i in range(len(eta_bin_centers)):
+        print(eta_bin_centers[i], ' GeV: ',
+              mean_effs[i], ' +- ',
+              std_effs[i])
+
+    eta_output[d] = {'bins': eta_bins,
+                     'bin_centers': eta_bin_centers,
+                     'effs_mean': mean_effs,
+                     'effs_std': std_effs}
+
+output = {'pt': pt_output, 'eta': eta_output}
 np.save('efficiencies/train3_{}GeV'.format(pt_min), output)
