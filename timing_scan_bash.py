@@ -18,7 +18,7 @@ parser.add_argument('--repeat', type=int, default=5,
                     help='number of repetitions of execution loop to find best timing; see https://docs.python.org/3/library/timeit.html')
 args = parser.parse_args()
 
-pts = ['2GeV', '1GeV5', '1GeV', '0GeV75', '0GeV6', '0GeV5']
+pts = ['2GeV', '1GeV5', '1GeV', '0GeV9', '0GeV8', '0GeV7', '0GeV6', '0GeV5']
 
 for pt in pts:
   file = open("timeit_interaction_network.sh", "r")
