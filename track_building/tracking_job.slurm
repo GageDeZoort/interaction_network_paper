@@ -11,5 +11,4 @@ module purge
 module load anaconda3
 conda activate geoenv
 
-python measure_tracking_effs.py 2
-
+python measure_tracking_effs.py 0p9

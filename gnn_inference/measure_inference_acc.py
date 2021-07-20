@@ -14,7 +14,6 @@ from matplotlib import cm
 from torch_geometric.data import Data, DataLoader
 
 from models.interaction_network import InteractionNetwork
-from models.graph import Graph
 from models.dataset import GraphDataset
 
 construction = sys.argv[1]

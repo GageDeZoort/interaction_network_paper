@@ -65,7 +65,7 @@ effs_by_pt = {'tight': [],
               'exa': [],
               'cms': []}
 
-eta_bins = np.linspace(-4,4,20)
+eta_bins = np.linspace(-4,4,28)
 eta_bin_centers = (eta_bins[1:] + eta_bins[:-1])/2.
 effs_by_eta = {'tight': [],
                'exa': [],
