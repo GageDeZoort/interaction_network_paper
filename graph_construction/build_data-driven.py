@@ -105,7 +105,11 @@ def select_segments(hits1, hits2, phi_slope_max, z0_max,
                      (intersected_layer == False) &
                      (module_map[mid1,mid2]))
 
-    return hit_pairs[['index_1', 'index_2']][good_seg_mask], dr[good_seg_mask], dphi[good_seg_mask], dz[good_seg_mask], dR[good_seg_mask]
+    dr = dr[good_seg_mask]
+    dphi = dphi[good_seg_mask]
+    dz = dz[good_seg_mask]
+    dR = dR[good_seg_mask]
+    return hit_pairs[['index_1', 'index_2']][good_seg_mask], dr, dphi, dz, dR
 
 def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
                     feature_names, feature_scale, evtid="-1",
