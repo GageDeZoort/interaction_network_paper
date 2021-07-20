@@ -21,13 +21,14 @@ def train(args, model, device, train_loader, optimizer, epoch):
         data = data.to(device)
         optimizer.zero_grad()
         output = model(data)
-        loss = F.binary_cross_entropy(output.squeeze(1), data.y)
+        y, output = data.y, output.squeeze(1)
+        loss = F.binary_cross_entropy(output, y, reduction='mean')
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
-            #print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-            #    epoch, batch_idx, len(train_loader.dataset),
-            #    100. * batch_idx / len(train_loader), loss.item()))
+            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+                epoch, batch_idx, len(train_loader.dataset),
+                100. * batch_idx / len(train_loader), loss.item()))
             if args.dry_run:
                 break
         losses.append(loss.item())
@@ -41,28 +42,25 @@ def validate(model, device, val_loader):
     for batch_idx, data in enumerate(val_loader):
         data = data.to(device)
         output = model(data)
-        loss = F.binary_cross_entropy(output.squeeze(1), data.y)
+        y, output = data.y, output.squeeze()
+        loss = F.binary_cross_entropy(out, y, reduction='mean').item()
         
         # define optimal threshold (thld) where TPR = TNR 
         diff, opt_thld, opt_acc = 100, 0, 0
         best_tpr, best_tnr = 0, 0
         for thld in np.arange(0.001, 0.5, 0.001):
-            TP = torch.sum((data.y==1).squeeze() & 
-                           (output>thld).squeeze()).item()
-            TN = torch.sum((data.y==0).squeeze() & 
-                           (output<thld).squeeze()).item()
-            FP = torch.sum((data.y==0).squeeze() & 
-                           (output>thld).squeeze()).item()
-            FN = torch.sum((data.y==1).squeeze() & 
-                           (output<thld).squeeze()).item()
+            TP = torch.sum((y==1) & (output>thld)).item()
+            TN = torch.sum((y==0) & (output<thld)).item()
+            FP = torch.sum((y==0) & (output>thld)).item()
+            FN = torch.sum((y==1) & (output<thld)).item()
             acc = (TP+TN)/(TP+TN+FP+FN)
             TPR, TNR = TP/(TP+FN), TN/(TN+FP)
             delta = abs(TPR-TNR)
-            if (delta < diff): diff, opt_thld, opt_acc = delta, thld, acc
-        
+            if (delta < diff): 
+                diff, opt_thld, opt_acc = delta, thld, acc
 
         opt_thlds.append(opt_thld)
-        accs.append(acc)
+        accs.append(opt_acc)
 
     print("...val accuracy=", np.mean(accs))
     return np.mean(opt_thlds) 
@@ -145,8 +143,7 @@ def main():
         train_kwargs.update(cuda_kwargs)
         test_kwargs.update(cuda_kwargs)
         
-
-    home_dir = "/scratch/gpfs/jdezoort"
+    home_dir = "../"
     indir = "{}/hitgraphs_{}/{}_{}/".format(home_dir, args.sample, args.construction, args.pt)
     
     graph_files = np.array(os.listdir(indir))
@@ -191,17 +188,15 @@ def main():
         
         if args.save_model:
             torch.save(model.state_dict(),
-                       "trained_models/train{}_{}hu_PyG_{}_epoch{}_{}GeV.pt"
-                       .format(args.sample, args.hidden_size, 
-                               args.construction, epoch, args.pt))
+                       "trained_models/train{}_PyG_{}_epoch{}_{}GeV_redo.pt"
+                       .format(args.sample, args.construction, epoch, args.pt))
 
         output['train_loss'].append(train_loss)
         output['test_loss'].append(test_loss)
         output['test_acc'].append(test_acc)
     
-        np.save('train_output/train{}_{}hu_PyG_{}_{}GeV'
-                .format(args.sample, args.hidden_size,
-                        args.construction, args.pt),
+        np.save('train_output/train{}_PyG_{}_{}GeV_redo'
+                .format(args.sample, args.construction, args.pt),
                 output)
 
 

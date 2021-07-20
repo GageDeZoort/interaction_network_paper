@@ -24,18 +24,13 @@ class GraphDataset(Dataset):
         
     def get(self, idx):
         with np.load(self.graph_files[idx]) as f:
-            #x, edge_attr, y, pid = f['X'], f['Ra'], f['y'], f['pid']
-            x = torch.from_numpy(f['x'])#, dtype=torch.float32)
-            edge_attr = torch.from_numpy(f['edge_attr'])#, dtype=torch.float32)
+            x = torch.from_numpy(f['x'])
+            edge_attr = torch.from_numpy(f['edge_attr'])
             edge_index = torch.from_numpy(f['edge_index'])
-            y = torch.from_numpy(f['y'])#, dtype=torch.uint8)
-            pid = torch.from_numpy(f['pid'])#, dtype=torch.uint8)
-
-            #print('before',
-            #      '\nedge_index:', edge_index.shape,
-            #      '\nedge_attr:', edge_attr.shape,
-            #      '\ny:', y.shape)
-
+            y = torch.from_numpy(f['y'])
+            pid = torch.from_numpy(f['pid'])
+            pt = torch.from_numpy(f['pt']) if 'pt' in f else 0
+            eta = torch.from_numpy(f['eta']) if 'eta' in f else 0
 
             # make graph undirected
             row, col = edge_index
@@ -46,13 +41,7 @@ class GraphDataset(Dataset):
 
             data = Data(x=x, edge_index=edge_index,
                         edge_attr=torch.transpose(edge_attr, 0, 1),
-                        y=y, pid=pid)
+                        y=y, pid=pid, pt=pt, eta=eta)
             data.num_nodes = len(x)
-            #print('after',
-            #      '\nedge_index:', data.edge_index.shape,
-            #      '\nedge_attr:', data.edge_attr.shape,
-            #      '\ny:', data.y.shape)
-                  
-            
 
         return data        
