@@ -7,82 +7,93 @@ import argparse
 import pickle
 from os import listdir
 from os.path import isfile, join
-sys.path.append("../")
-sys.path.append("../../")
 
+import torch
 import numpy as np
 import pandas as pd
+from torch_geometric.data import Data
 
 import trackml
 from trackml.dataset import load_event
 from trackml.dataset import load_dataset
-from models.graph import Graph, load_graph
-
 
 # break down input files into event_ids 
-data_dir = '/tigress/jdezoort/train_2'
+data_dir = '/tigress/jdezoort/train_1'
 files = [f for f in listdir(data_dir)]
 files = [f.split('.')[0] for f in files if "hits" in f]
 evt_ids = [f.split('-')[0] for f in files]
 
 N_avg = 1770
 endcaps = True
-pt_cut = float(sys.argv[1])
 
-method = 'heptrkx_plus'
-endcaps = False if (method == 'heptrkx_classic') else True
+parser = argparse.ArgumentParser(description='Measure Graph Construction Efficiencies')
+parser.add_argument('--pt-min', type=float, default=2, 
+                    help='pt_min for graph construction')
+parser.add_argument('--construction', type=str, default='geometric', 
+                    help='construction method: geometric, pre-clustering, or data-driven')
+parser.add_argument('--train-sample', type=int, default=1,
+                    help='train_<train-sample> used to generate graphs')
+parser.add_argument('--N', type=int, default=1770,
+                    help='number of graphs use in calculation')
+args = parser.parse_args()
+print(' ... using args:\n', args)
+
+pt_cut = args.pt_min
+method = args.construction
 
 pixel_layers = [(8,2), (8,4), (8,6), (8,8)]
 valid_layer_pairs = [(0,1), (1,2), (2,3)]
-if (endcaps):
-    pixel_layers.extend([(7,2), (7,4), (7,6), (7,8),
-                         (7,10), (7,12), (7,14),
-                         (9,2), (9,4), (9,6), (9,8),
-                         (9,10), (9,12), (9,14)])
-    valid_layer_pairs.extend([(0,4), (1,4), (2,4), (3,4),
-                              (0,11), (1,11), (2,11), (3,11),
-                              (4,5), (5,6), (6,7),
-                              (7,8), (8,9), (9,10),
-                              (11,12), (12,13), (13,14),
-                              (14,15), (15,16), (16,17)])
+pixel_layers.extend([(7,2), (7,4), (7,6), (7,8),
+                     (7,10), (7,12), (7,14),
+                     (9,2), (9,4), (9,6), (9,8),
+                     (9,10), (9,12), (9,14)])
+valid_layer_pairs.extend([(0,4), (1,4), (2,4), (3,4),
+                          (0,11), (1,11), (2,11), (3,11),
+                          (4,5), (5,6), (6,7),
+                          (7,8), (8,9), (9,10),
+                          (11,12), (12,13), (13,14),
+                          (14,15), (15,16), (16,17)])
 
-
-pt_cut_str = {0.5: '0p5', 0.6: '0p6', 0.75: '0p75', 1: '1', 1.5: '1p5', 2: '2'}
-graph_dir = '/scratch/gpfs/jdezoort/hitgraphs_2/{}_{}/'.format(method, pt_cut_str[pt_cut])
+pt_cut_str = {0.5: '0p5', 0.6: '0p6', 0.7: '0p7', 0.8: '0p8',  0.9: '0p9', 1: '1', 
+              1.1: '1p1', 1.2: '1p2', 1.3: '1p3', 1.4: '1p4', 1.5: '1p5', 1.6: '1p6',
+              1.7: '1p7', 1.8: '1p8', 1.9: '1p9', 2: '2'}
+graph_dir = '../../../hitgraphs_{}/{}_{}/'.format(args.train_sample, method, 
+                                                  pt_cut_str[pt_cut])
+print(" ... reading graphs from", graph_dir, '\n')
 
 truth = {}
 purities, efficiencies = [], []
 sizes, nodes, edges = [], [], []
-
-N_avg = 100
+counter = 0
 for i, evtid in enumerate(evt_ids):
-    if (int(evtid.split("00000")[1].split(".")[0]) > 2820+N_avg): continue
-
-    print("evtid", evtid)
-    #if (i == N_avg): break
-    print('...', evtid)
+    #if (int(evtid.split("00000")[1].split(".")[0]) > 2820+N_avg): continue
 
     # load in graph 
     graph_path = graph_dir + evtid + '_g000.npz'
-    graph = load_graph(graph_path)
-    X, Ra = graph.X, graph.Ra
-    Ri, Ro = graph.Ri, graph.Ro
-    y = graph.y
-    size = sys.getsizeof(X) + sys.getsizeof(Ra) 
-    size += sys.getsizeof(Ri) + sys.getsizeof(Ro) + sys.getsizeof(y)
-
-    for j, Ri_row in enumerate(Ri):
-        Ri_row = Ri_row[y > 0.5]
-        if(np.sum(Ri_row) > 1): 
-            print("ERREREREREREROR!!!!")
+    if not os.path.isfile(graph_path):
+        continue
         
-    print(y)
-    print("graph.X: {}, graph.Ra: {}, graph.Ri: {}, graph.y: {}"
-          .format(graph.X.shape, graph.Ra.shape, graph.Ri.shape, graph.y.shape))
+    print(evtid)
+    with np.load(graph_path) as f:
+        x = torch.from_numpy(f['x'])
+        edge_attr = torch.from_numpy(f['edge_attr'])
+        edge_index = torch.from_numpy(f['edge_index'])
+        y = torch.from_numpy(f['y'])
+        pid = torch.from_numpy(f['pid'])
+        data = Data(x=x, edge_index=edge_index,
+                    edge_attr=torch.transpose(edge_attr, 0, 1),
+                    y=y, pid=pid)
+        data.num_nodes = len(x)
+        
+    size = sys.getsizeof(data.x) + sys.getsizeof(data.edge_attr) 
+    size += sys.getsizeof(data.edge_index) + sys.getsizeof(data.y)
+        
+    #print("x: {}, edge_attr: {}, edge_index: {}, y: {}"
+    #      .format(data.x.shape, data.edge_attr.shape, data.edge_index.shape, data.y.shape))
 
-    n_edges, n_nodes = Ri.shape[0], Ri.shape[1]
+    n_edges, n_nodes = edge_index.shape[1], x.shape[0]
 
-    print("n_edges: {}, n_nodes: {}".format(n_edges, n_nodes))
+    #print("n_edges: {}, n_nodes: {}".format(n_edges, n_nodes))
 
     hits, cells, particles, truth = load_event(os.path.join(data_dir, evtid))
     hits_by_loc = hits.groupby(['volume_id', 'layer_id'])
@@ -132,36 +143,36 @@ for i, evtid in enumerate(evt_ids):
         
         truth_edges_per_particle[p_id] = n_layers_hit-1
 
-        #print(particle)
-        #print(hit_ids)
-        #print(n_layers_hit-1)
-        
-
-    purity = np.sum(y)/truth_edges
-    efficiency = np.sum(y)/len(y)
-    print('purity: {}/{}={}'.format(np.sum(y), truth_edges, purity))
-    print('efficiency: {}/{}={}'.format(np.sum(y), len(y), efficiency))
-    print('n_parts={}/{}'
-          .format(n_particles_after, n_particles_before))
-    print('graph edges={}, graph nodes={}'
+    efficiency = torch.sum(data.y).item()/truth_edges
+    purity = torch.sum(data.y).item()/len(data.y)
+    print(' > efficiency: {:.4f}/{:.4f}={:.4f}'.format(torch.sum(y).item(), truth_edges, efficiency))
+    print(' > purity: {:.4f}/{:.4f}={:.4f}'.format(torch.sum(y).item(), len(y), purity))
+    print(' > n_particles={} (pt > {} GeV) / {}'
+          .format(n_particles_after, pt_cut, n_particles_before))
+    print(' > graph edges={}\n > graph nodes={}'
           .format(n_edges, n_nodes))
-    print('size={}\n'.format(size/10**6))
-    if (np.sum(y)/truth_edges > 1.0): print('\nERROR: PURITY>1!\n')
+    
+    #print(' > size={}\n'.format(size/10**6))
+    if (torch.sum(y).item()/truth_edges > 1.0): print('\nERROR: PURITY>1!\n')
 
     purities.append(purity)
     efficiencies.append(efficiency)
     sizes.append(size)
     nodes.append(n_nodes)
     edges.append(n_edges)
-    if (i==N_avg): break
+    counter += 1
+    if counter > int(args.N): continue
 
-print('\navg. purity = {:.3f}+/-{:.3f}'
-      .format(np.mean(purities), np.std(purities)))
-print('avg efficiency = {:.3f}+/-{:.3f}\n'
+print(' ********************* ')
+print(' ** AVERAGE RESULTS ** ')
+print(' ********************* ')
+print(' > efficiency = {:.4f}+/-{:.4f}'
       .format(np.mean(efficiencies), np.std(efficiencies)))
-print('avg nodes={:.3f}+/-{:.3f}, edges={:.3f}+/-{:.3f}'
+print(' > purity = {:.4f}+/-{:.4f}'
+      .format(np.mean(purities), np.std(purities)))
+print(' > nodes={:.3f}+/-{:.3f}\n > edges={:.3f}+/-{:.3f}'
       .format(np.mean(nodes), np.std(nodes),
               np.mean(edges), np.std(edges)))
-sizes = np.array(sizes)/10**6
-print('avg size={:.3f}+/-{:.3f}'
-      .format(sizes.mean(), sizes.std()))
+#sizes = np.array(sizes)/10**6
+#print('avg size={:.3f}+/-{:.3f}'
+#      .format(sizes.mean(), sizes.std()))

@@ -9,6 +9,8 @@
 
 module purge
 module load anaconda3
-conda activate geo_gnnenv
+conda activate geoenv
 
-python measure_graph_effs.py 0.5
+echo "train_1, 1 GeV, 5 graphs, pre-clustering"
+python measure_graph_effs.py --pt-min 1 --construction pre-clustering --train-sample 1 --N 5
+

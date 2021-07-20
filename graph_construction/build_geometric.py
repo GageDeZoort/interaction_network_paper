@@ -21,14 +21,12 @@ import numpy as np
 import pandas as pd
 import trackml.dataset
 import time
-from sklearn.cluster import DBSCAN
-from numba import jit
 
 # Locals
 from collections import namedtuple
 import numpy as np
 
-Graph = namedtuple('Graph', ['x', 'edge_attr', 'edge_index', 'y', 'pid', 'pt'])
+Graph = namedtuple('Graph', ['x', 'edge_attr', 'edge_index', 'y', 'pid', 'pt', 'eta'])
 
 def parse_args():
     """Parse command line arguments."""
@@ -44,32 +42,6 @@ def parse_args():
     add_arg('--start-evtid', type=int, default=1000)
     add_arg('--end-evtid', type=int, default=3000)
     return parser.parse_args()
-
-# Build custom distance matrix
-@jit(nopython=True)
-def build_dist_matrix(X):
-    """ speedy custom distance matrix calculation
-    """
-    n_hits = X.shape[0]
-    dist_matrix = 100.*np.ones((n_hits, n_hits))
-    np.fill_diagonal(dist_matrix, 0.0)
-    for i in range(n_hits):
-        for j in range(i, n_hits):
-            if (X[i][2] == X[j][2]): continue
-            dEta = X[i][0] - X[j][0]
-            dPhi = min(abs(X[i][1] - X[j][1]),
-                       2*np.pi - abs(X[i][1]-X[j][1]))**2
-            dist = np.sqrt(dEta**2 + dPhi**2)
-            dist_matrix[i][j] = dist
-            dist_matrix[j][i] = dist
-    return dist_matrix
-
-# DBScan clustering
-def cluster_hits(dist_matrix, eps=0.05, k=3):
-    clustering = DBSCAN(eps=eps, min_samples=k,
-                        metric='precomputed').fit(dist_matrix)
-    return clustering.labels_
-
 
 def calc_dphi(phi1, phi2):
     """Computes phi2-phi1 given in range [-pi,pi]"""
@@ -95,7 +67,7 @@ def select_segments(hits1, hits2, phi_slope_max, z0_max,
     """
     
     # Start with all possible pairs of hits
-    keys = ['evtid', 'r', 'phi', 'z', 'label']
+    keys = ['evtid', 'r', 'phi', 'z']
     hit_pairs = hits1[keys].reset_index().merge(
         hits2[keys].reset_index(), on='evtid', suffixes=('_1', '_2'))
 
@@ -109,8 +81,7 @@ def select_segments(hits1, hits2, phi_slope_max, z0_max,
     dR = np.sqrt(deta**2 + dphi**2)
     phi_slope = dphi / dr
     z0 = hit_pairs.z_1 - hit_pairs.r_1 * dz / dr
-    same_label = (hit_pairs.label_1 == hit_pairs.label_2)
-    #print("max(z0) = ", np.max(abs(z0)))
+    
     # Apply the intersecting line cut
     intersected_layer = dr.abs() < -1 
     if remove_intersecting_edges:
@@ -118,18 +89,23 @@ def select_segments(hits1, hits2, phi_slope_max, z0_max,
         # Innermost barrel layer --> innermost L,R endcap layers
         if (layer1 == 0) and (layer2 == 11 or layer2 == 4):
             z_coord = 71.56298065185547 * dz/dr + z0
-            intersected_layer = np.logical_and(z_coord > -490.975, z_coord < 490.975)
+            intersected_layer = np.logical_and(z_coord > -490.975, 
+                                               z_coord < 490.975)
         if (layer1 == 1) and (layer2 == 11 or layer2 == 4):
             z_coord = 115.37811279296875 * dz / dr + z0
-            intersected_layer = np.logical_and(z_coord > -490.975, z_coord < 490.975)
+            intersected_layer = np.logical_and(z_coord > -490.975, 
+                                               z_coord < 490.975)
 
     # Filter segments according to criteria
     good_seg_mask = ((phi_slope.abs() < phi_slope_max) & 
                      (z0.abs() < z0_max) & 
-                     (intersected_layer == False) &
-                     same_label)
+                     (intersected_layer == False))
 
-    return hit_pairs[['index_1', 'index_2']][good_seg_mask], dr[good_seg_mask], dphi[good_seg_mask], dz[good_seg_mask], dR[good_seg_mask]
+    dr = dr[good_seg_mask]
+    dphi = dphi[good_seg_mask]
+    dz = dz[good_seg_mask]
+    dR = dR[good_seg_mask]
+    return hit_pairs[['index_1', 'index_2']][good_seg_mask], dr, dphi, dz, dR
 
 def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
                     feature_names, feature_scale, evtid="-1",
@@ -137,18 +113,6 @@ def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
     """Construct one graph (e.g. from one event)"""
     
     t0 = time.time()
-    
-    hits['eta'] = calc_eta(hits['r'], hits['z'])
-    X = hits[['eta', 'phi', 'layer']].to_numpy()
-    dist_matrix = build_dist_matrix(X)
-    # 0.5: 0.05; 0.6: 0.06; 0.75: 0.08; 1: 0.016opt, 0.1; 1p5, 0.18; 2: 0.030opt, 0.22
-    # 2: 0.22, 1.9: 0.22, 1.8: 0.21, 1.7: 0.20, 1.6: 0.19, 1.5: 0.18, 
-    # 1.4: 0.17, 1.3: 0.16, 1.2: 0.15, 1.1: 0.14, 1: 0.14, 0.9: 0.13 0.8: 0.1, 0.7: 0.09,
-    # 0.6: 0.08, 0.5: 0.06
-    for eps in [0.08]:
-        labels = cluster_hits(dist_matrix, eps=eps, k=3)
-        print('n unique labels at eps={}: {}'.format(eps, len(np.unique(labels))))
-    hits['label'] = labels
     
     # Loop over layer pairs and construct segments
     layer_groups = hits.groupby('layer')
@@ -202,6 +166,7 @@ def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
     # Fill the segment, particle labels
     pid = hits.particle_id
     pt = hits.pt
+    eta = hits.eta
     unique_pid_map = {pid_old: pid_new 
                       for pid_new, pid_old in enumerate(np.unique(pid.values))}
     pid_mapped = pid.map(unique_pid_map)
@@ -233,39 +198,28 @@ def construct_graph(hits, layer_pairs, phi_slope_max, z0_max,
                 if abs(temp[1]) < abs(z1[l]):
                     if (temp[0] > 1):
                         
-                        print("adjusting y:", temp)
-                        print("new temp = (", temp[0], abs(z1[l]), l1[l], l2[l])
-                        print("old y:", y[(pid1==pid2) & (pid1==pid) &
-                                          (layer1==temp[2]) & (layer2==temp[3])])
+                        print(" *** adjusting y for triangle edge pattern")
+                        print("     > replacing edge (l1={}, l2={}, z1={:.2f})\n"
+                              .format(temp[2], temp[3], temp[1]),  
+                              "      with      edge (l1={}, l2={}, z1={:.2f})"
+                              .format(l1[l], l2[l], abs(z1[l]))
+                        )
+
                         y[(pid1==pid2) & (pid1==pid) & 
                           (layer1==temp[2]) & (layer2==temp[3])] = 0
-                        print("new y:", y[(pid1==pid2) & (pid1==pid) &
-                                           (layer1==temp[2]) & (layer2==temp[3])])
-                        
+
                     temp[1] = abs(z1[l])
                     temp[2] = l1[l]
                     temp[3] = l2[l]
 
-                #print("new temp=", temp)
                 pid_lookup[pid] = temp
     
-    print("took {0} seconds".format(time.time()-t0))
-    
-    print("X.shape", X.shape)
-    print("edge_index.shape", edge_index.shape)
-    print("y.shape", y.shape)
-    print("edge_attr.shape", edge_attr.shape)
-    print("pid.shape", pid_mapped.shape)
-    print("pt.shape", pt, pt.shape)
-    return Graph(X, edge_attr, edge_index, y, pid_mapped, pt)
+    print("... completed in {0} seconds".format(time.time()-t0))
+    return Graph(X, edge_attr, edge_index, y, pid_mapped, pt, eta)
 
 def select_hits(hits, truth, particles, pt_min=0, endcaps=False):
     # Barrel volume and layer ids
     vlids = [(8,2), (8,4), (8,6), (8,8)]
-    #if (endcaps): vlids.extend([(7,2), (7,4), (7,6), (7,8), 
-    #                            (7,10), (7,12), (7,14),
-    #                            (9,2), (9,4), (9,6), (9,8),
-    #                            (9,10), (9,12), (9,14)])
     if (endcaps): vlids.extend([(7,14), (7,12), (7,10),
                                 (7,8), (7,6), (7,4), (7,2),
                                 (9,2), (9,4), (9,6), (9,8),
@@ -280,18 +234,21 @@ def select_hits(hits, truth, particles, pt_min=0, endcaps=False):
     # Calculate particle transverse momentum
     pt = np.sqrt(particles.px**2 + particles.py**2)
     particles['pt'] = pt
+    eta = calc_eta(pt, particles.pz)
+    particles['eta'] = eta
+
     # True particle selection.
     # Applies pt cut, removes all noise hits.
     particles = particles[pt > pt_min]
     truth = (truth[['hit_id', 'particle_id']]
-             .merge(particles[['particle_id', 'pt']], on='particle_id'))
+             .merge(particles[['particle_id', 'pt', 'eta']], on='particle_id'))
     # Calculate derived hits variables
     r = np.sqrt(hits.x**2 + hits.y**2)
     phi = np.arctan2(hits.y, hits.x)
     # Select the data columns we need
     hits = (hits[['hit_id', 'z', 'layer']]
             .assign(r=r, phi=phi)
-            .merge(truth[['hit_id', 'particle_id', 'pt']], on='hit_id'))
+            .merge(truth[['hit_id', 'particle_id', 'pt', 'eta']], on='hit_id'))
     # Remove duplicate hits
     hits = hits.loc[
         hits.groupby(['particle_id', 'layer'], as_index=False).r.idxmin()
@@ -383,13 +340,8 @@ def process_event(prefix, output_dir, pt_min, n_eta_sections, n_phi_sections,
     for graph, filename in zip(graphs, filenames):
         np.savez(filename, ** dict(x=graph.x, edge_attr=graph.edge_attr,
                                    edge_index=graph.edge_index, 
-                                   y=graph.y, pid=graph.pid))
-        print(filename)
-
-    #save_graphs(graphs, filenames)
-    #for i, filename in enumerate(filenames):
-    #    print(filename)
-    #    np.savez(filename, graphs[i])
+                                   y=graph.y, pid=graph.pid, pt=graph.pt, eta=graph.eta))
+        
 
 def main():
     """Main function"""
