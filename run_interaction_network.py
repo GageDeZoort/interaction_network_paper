@@ -43,7 +43,7 @@ def validate(model, device, val_loader):
         data = data.to(device)
         output = model(data)
         y, output = data.y, output.squeeze()
-        loss = F.binary_cross_entropy(out, y, reduction='mean').item()
+        loss = F.binary_cross_entropy(output, y, reduction='mean').item()
         
         # define optimal threshold (thld) where TPR = TNR 
         diff, opt_thld, opt_acc = 100, 0, 0
