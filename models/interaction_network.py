@@ -1,5 +1,6 @@
 import torch
 import torch_geometric
+from torch import Tensor
 
 import torch.nn as nn
 import torch.nn.functional as F
@@ -45,11 +46,12 @@ class InteractionNetwork(MessagePassing):
         self.R1 = RelationalModel(10, 4, hidden_size)
         self.O = ObjectModel(7, 3, hidden_size)
         self.R2 = RelationalModel(10, 1, hidden_size)
+        self.E: Tensor = Tensor()
 
-    def forward(self, data):
-        x = data.x
-        edge_index, edge_attr = data.edge_index, data.edge_attr
-        x_tilde = self.propagate(edge_index, x=x, edge_attr=edge_attr)
+    def forward(self, x: Tensor, edge_index: Tensor, edge_attr: Tensor) -> Tensor:
+
+        # propagate_type: (x: Tensor, edge_attr: Tensor)
+        x_tilde = self.propagate(edge_index, x=x, edge_attr=edge_attr, size=None)
 
         m2 = torch.cat([x_tilde[edge_index[1]],
                         x_tilde[edge_index[0]],
