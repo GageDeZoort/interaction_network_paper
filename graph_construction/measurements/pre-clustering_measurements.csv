@@ -1,4 +1,4 @@
-pt,purity,purity_err,efficiency,efficiency_err,n_edges,n_edges_err,n_nodes,n_nodes_err
+pt,efficiency,efficiency_err,purity,purity_err,n_edges,n_edges_err,n_nodes,n_nodes_err
 #2,0.984,0.006,0.741,0.082,1160,310,1093,180
 #1.5,0.984,0.004,0.526,0.125,3628,1517,2256,353
 #1,0.981,0.003,0.237,0.087,19962,8841,5294,766

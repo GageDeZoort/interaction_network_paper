@@ -88,5 +88,5 @@ pt_lookup = {0.5: '0p5', 0.6: '0p6', 0.7: '0p7', 0.8: '0p8',
              1.7: '1p7', 1.8: '1p8', 1.9: '1p9', 2.0: '2'}
 
 pt_str = pt_lookup[pt_min]
-with open(f'module_maps/module_map_{train_sample}_{pt_str}GeV.npy', 'wb') as f:
+with open(f'module_map_{train_sample}_{pt_str}GeV.npy', 'wb') as f:
     np.save(f, module_maps)

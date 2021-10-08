@@ -61,32 +61,32 @@ test_loader = DataLoader(test_set, **params)
 pt_bins = np.array([0.6, 0.8, 1, 1.2, 1.5, 1.8, 2.1, 2.5, 3,
                     3, 3.5, 4, 5, 6, 8, 10, 15, 25, 40, 60, 100, 150])
 pt_bin_centers = (pt_bins[1:] + pt_bins[:-1])/2.
-effs_by_pt = {'tight': [],
-              'exa': [],
-              'cms': []}
+effs_by_pt = {'perfect': [],
+              'dm': [],
+              'lhc': []}
 
 eta_bins = np.linspace(-4,4,28)
 eta_bin_centers = (eta_bins[1:] + eta_bins[:-1])/2.
-effs_by_eta = {'tight': [],
-               'exa': [],
-               'cms': []}
+effs_by_eta = {'perfect': [],
+               'dm': [],
+               'lhc': []}
 
-cms_effs, tight_effs, exa_effs = [], [], []
+lhc_effs, perfect_effs, dm_effs = [], [], []
 with torch.no_grad():
     counter = 0
 
-    found_by_pt = {'tight': np.zeros(len(pt_bin_centers)),
-                   'exa': np.zeros(len(pt_bin_centers)),
-                   'cms': np.zeros(len(pt_bin_centers))}
-    missed_by_pt = {'tight': np.zeros(len(pt_bin_centers)),
-                    'exa': np.zeros(len(pt_bin_centers)),
-                    'cms': np.zeros(len(pt_bin_centers))}
-    found_by_eta = {'tight': np.zeros(len(eta_bin_centers)),
-                    'exa': np.zeros(len(eta_bin_centers)),
-                    'cms': np.zeros(len(eta_bin_centers))}
-    missed_by_eta = {'tight': np.zeros(len(eta_bin_centers)),
-                     'exa': np.zeros(len(eta_bin_centers)),
-                     'cms': np.zeros(len(eta_bin_centers))}
+    found_by_pt = {'perfect': np.zeros(len(pt_bin_centers)),
+                   'dm': np.zeros(len(pt_bin_centers)),
+                   'lhc': np.zeros(len(pt_bin_centers))}
+    missed_by_pt = {'perfect': np.zeros(len(pt_bin_centers)),
+                    'dm': np.zeros(len(pt_bin_centers)),
+                    'lhc': np.zeros(len(pt_bin_centers))}
+    found_by_eta = {'perfect': np.zeros(len(eta_bin_centers)),
+                    'dm': np.zeros(len(eta_bin_centers)),
+                    'lhc': np.zeros(len(eta_bin_centers))}
+    missed_by_eta = {'perfect': np.zeros(len(eta_bin_centers)),
+                     'dm': np.zeros(len(eta_bin_centers)),
+                     'lhc': np.zeros(len(eta_bin_centers))}
 
     for batch_idx, data in enumerate(test_loader):
         data = data.to(device)
@@ -112,11 +112,11 @@ with torch.no_grad():
         pid_label_map = {p.item(): -5 for p in unique_pids}
         pid_pt_map = {pids[i].item(): pts[i].item() for i in range(len(pids))}
         pid_eta_map = {pids[i].item(): etas[i].item() for i in range(len(etas))}
-        pid_found_map = {'tight': {p.item(): False for p in unique_pids
-                                   if pid_counts_map[p.item()] >= 1},
-                         'exa': {p.item(): False for p in unique_pids
+        pid_found_map = {'perfect': {p.item(): False for p in unique_pids
+                                     if pid_counts_map[p.item()] >= 1},
+                         'dm': {p.item(): False for p in unique_pids
                                  if pid_counts_map[p.item()] >= 1},
-                         'cms': {p.item(): False for p in unique_pids
+                         'lhc': {p.item(): False for p in unique_pids
                                  if pid_counts_map[p.item()] >= 1}}
 
         #print(np.histogram(list(pid_eta_map.values())))
@@ -151,7 +151,7 @@ with torch.no_grad():
         labels = clustering.labels_
         
         # count reconstructed particles from hit clusters 
-        cms_clusters, tight_clusters, exa_clusters = 0, 0, 0
+        lhc_clusters, perfect_clusters, dm_clusters = 0, 0, 0
         for label in np.unique(labels):  
             if label<0: continue # ignore noise 
                 
@@ -169,18 +169,18 @@ with torch.no_grad():
             label_pt = pid_pt_map[selected_pid]
             
             if selected_pid_fraction > 0.75:
-                cms_clusters += 1 # all hits have the same pid
-                pid_found_map['cms'][selected_pid] = True
+                lhc_clusters += 1 # all hits have the same pid
+                pid_found_map['lhc'][selected_pid] = True
 
                 if pid_counts_map[selected_pid] == len(label_pids):
-                    tight_clusters += 1 # all required hits for pid
-                    pid_found_map['tight'][selected_pid] = True
+                    perfect_clusters += 1 # all required hits for pid
+                    pid_found_map['perfect'][selected_pid] = True
 
             if selected_pid_fraction > 0.5:
                 true_counts = pid_counts_map[selected_pid]
                 if n_selected_pid/true_counts > 0.5:
-                    exa_clusters += 1
-                    pid_found_map['exa'][selected_pid] = True
+                    dm_clusters += 1
+                    pid_found_map['dm'][selected_pid] = True
 
         for d, pid_found in pid_found_map.items():
             for key, val in pid_found.items():
@@ -206,16 +206,16 @@ with torch.no_grad():
             effs_by_pt[d].append(eff_by_pt)
             effs_by_eta[d].append(eff_by_eta)
 
-        cms_effs.append(cms_clusters/n_particles)
-        tight_effs.append(tight_clusters/n_particles)
-        exa_effs.append(exa_clusters/n_particles)
+        lhc_effs.append(lhc_clusters/n_particles)
+        perfect_effs.append(perfect_clusters/n_particles)
+        dm_effs.append(dm_clusters/n_particles)
         
         counter += 1
         #if (counter > 5): break
 
-print("CMS Eff: {:.4f}+/-{:4f}".format(np.mean(cms_effs), np.std(cms_effs)))
-print("Tight Eff: {:.4f}+/-{:.4f}".format(np.mean(tight_effs), np.std(tight_effs)))
-print("Exa Eff: {:.4f}+/-{:.4f}".format(np.mean(exa_effs), np.std(exa_effs)))
+print("LHC Eff: {:.4f}+/-{:4f}".format(np.mean(lhc_effs), np.std(lhc_effs)))
+print("Perfect Eff: {:.4f}+/-{:.4f}".format(np.mean(perfect_effs), np.std(perfect_effs)))
+print("DM Eff: {:.4f}+/-{:.4f}".format(np.mean(dm_effs), np.std(dm_effs)))
 
 pt_output = {}
 for d, effs in effs_by_pt.items():
