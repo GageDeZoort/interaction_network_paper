@@ -20,7 +20,7 @@ def train(args, model, device, train_loader, optimizer, epoch):
     for batch_idx, data in enumerate(train_loader):
         data = data.to(device)
         optimizer.zero_grad()
-        output = model(data)
+        output = model(data.x, data.edge_index, data.edge_attr)
         y, output = data.y, output.squeeze(1)
         loss = F.binary_cross_entropy(output, y, reduction='mean')
         loss.backward()
@@ -41,7 +41,7 @@ def validate(model, device, val_loader):
     opt_thlds, accs = [], []
     for batch_idx, data in enumerate(val_loader):
         data = data.to(device)
-        output = model(data)
+        output = model(data.x, data.edge_index, data.edge_attr)
         y, output = data.y, output.squeeze()
         loss = F.binary_cross_entropy(output, y, reduction='mean').item()
         
@@ -71,7 +71,7 @@ def test(model, device, test_loader, thld=0.5):
     with torch.no_grad():
         for batch_idx, data in enumerate(test_loader):
             data = data.to(device)
-            output = model(data)
+            output = model(data.x, data.edge_index, data.edge_attr)
             TP = torch.sum((data.y==1).squeeze() & 
                            (output>thld).squeeze()).item()
             TN = torch.sum((data.y==0).squeeze() & 
