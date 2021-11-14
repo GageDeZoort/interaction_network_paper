@@ -1,7 +1,7 @@
 # Input/output configuration
-input_dir: /tigress/jdezoort/train_1
-output_dir:  ../../hitgraphs_1/geometric_2
-n_files: 1770
+input_dir: ../train_100_events
+output_dir: ../hitgraphs_1/geometric_2
+n_files: 100
 
 # Graph building configuration
 selection:
