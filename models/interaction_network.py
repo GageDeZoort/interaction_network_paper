@@ -7,17 +7,18 @@ import torch.nn.functional as F
 import torch_geometric.transforms as T
 from torch_geometric.nn import MessagePassing
 from torch.nn import Sequential as Seq, Linear, ReLU, Sigmoid
+from brevitas.nn import QuantLinear, QuantReLU
 
 class RelationalModel(nn.Module):
     def __init__(self, input_size, output_size, hidden_size):
         super(RelationalModel, self).__init__()
 
         self.layers = nn.Sequential(
-            nn.Linear(input_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, output_size),
+            QuantLinear(input_size, hidden_size, True),
+            QuantReLU(),
+            QuantLinear(hidden_size, hidden_size, True),
+            QuantReLU(),
+            QuantLinear(hidden_size, output_size, True),
         )
 
     def forward(self, m):
@@ -28,11 +29,11 @@ class ObjectModel(nn.Module):
         super(ObjectModel, self).__init__()
 
         self.layers = nn.Sequential(
-            nn.Linear(input_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, hidden_size),
-            nn.ReLU(),
-            nn.Linear(hidden_size, output_size),
+            QuantLinear(input_size, hidden_size, True),
+            QuantReLU(),
+            QuantLinear(hidden_size, hidden_size, True),
+            QuantReLU(),
+            QuantLinear(hidden_size, output_size, True),
         )
 
     def forward(self, C):
