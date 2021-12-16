@@ -8,17 +8,48 @@ import torch_geometric.transforms as T
 from torch_geometric.nn import MessagePassing
 from torch.nn import Sequential as Seq, Linear, ReLU, Sigmoid
 from brevitas.nn import QuantLinear, QuantReLU
+from brevitas.core.function_wrapper import TensorClamp
+from brevitas.quant.base import *
+from brevitas.quant.solver.weight import WeightQuantSolver
+from brevitas.quant.solver.bias import BiasQuantSolver
+from brevitas.quant.solver.act import ActQuantSolver
+from brevitas.quant.solver.trunc import TruncQuantSolver
+from brevitas.inject import ExtendedInjector
+from brevitas.inject.enum import ScalingImplType, StatsOp, RestrictValueType
+
+BIT_WIDTH=4
+
+class CustomFloatScaling(ExtendedInjector):
+    """
+    """
+    scaling_per_output_channel = False
+    restrict_scaling_type = RestrictValueType.FP
+    bit_width=BIT_WIDTH
+
+class CustomUintActQuant(UintQuant, ParamFromRuntimePercentileScaling, CustomFloatScaling, ActQuantSolver):
+    """
+    """
+    bit_width=BIT_WIDTH
+    tensor_clamp_impl = TensorClamp
+    requires_input_bit_width = True
+
+class CustomUintWeightQuant(NarrowIntQuant, MaxStatsScaling, CustomFloatScaling, WeightQuantSolver):
+    """
+    """
+    bit_width=BIT_WIDTH
+    tensor_clamp_impl = TensorClamp
+    requires_input_bit_width = True
 
 class RelationalModel(nn.Module):
     def __init__(self, input_size, output_size, hidden_size):
         super(RelationalModel, self).__init__()
 
         self.layers = nn.Sequential(
-            QuantLinear(input_size, hidden_size, True),
-            QuantReLU(),
-            QuantLinear(hidden_size, hidden_size, True),
-            QuantReLU(),
-            QuantLinear(hidden_size, output_size, True),
+            QuantLinear(input_size, hidden_size, True, weight_bit_width=BIT_WIDTH, weight_quant=CustomUintWeightQuant, return_quant_tensor=True),
+            QuantReLU(act_quant=CustomUintActQuant, return_quant_tensor=True),
+            QuantLinear(hidden_size, hidden_size, True, weight_bit_width=BIT_WIDTH, weight_quant=CustomUintWeightQuant, return_quant_tensor=True),
+            QuantReLU(act_quant=CustomUintActQuant, return_quant_tensor=True),
+            QuantLinear(hidden_size, output_size, True, weight_bit_width=BIT_WIDTH, weight_quant=CustomUintWeightQuant, return_quant_tensor=False),
         )
 
     def forward(self, m):
@@ -29,11 +60,11 @@ class ObjectModel(nn.Module):
         super(ObjectModel, self).__init__()
 
         self.layers = nn.Sequential(
-            QuantLinear(input_size, hidden_size, True),
-            QuantReLU(),
-            QuantLinear(hidden_size, hidden_size, True),
-            QuantReLU(),
-            QuantLinear(hidden_size, output_size, True),
+            QuantLinear(input_size, hidden_size, True, weight_bit_width=BIT_WIDTH, weight_quant=CustomUintWeightQuant, return_quant_tensor=True),
+            QuantReLU(act_quant=CustomUintActQuant, return_quant_tensor=True),
+            QuantLinear(hidden_size, hidden_size, True, weight_bit_width=BIT_WIDTH, weight_quant=CustomUintWeightQuant, return_quant_tensor=True),
+            QuantReLU(act_quant=CustomUintActQuant, return_quant_tensor=True),
+            QuantLinear(hidden_size, output_size, True, weight_bit_width=BIT_WIDTH, weight_quant=CustomUintWeightQuant, return_quant_tensor=False),
         )
 
     def forward(self, C):
@@ -52,7 +83,7 @@ class InteractionNetwork(MessagePassing):
     def forward(self, x: Tensor, edge_index: Tensor, edge_attr: Tensor) -> Tensor:
 
         # propagate_type: (x: Tensor, edge_attr: Tensor)
-        x_tilde = self.propagate(edge_index, x=x, edge_attr=edge_attr, size=None)
+        x_tilde = self.propagate(edge_index=edge_index, x=x, edge_attr=edge_attr, size=None)
 
         m2 = torch.cat([x_tilde[edge_index[1]],
                         x_tilde[edge_index[0]],
