@@ -17,7 +17,7 @@ from brevitas.quant.solver.trunc import TruncQuantSolver
 from brevitas.inject import ExtendedInjector
 from brevitas.inject.enum import ScalingImplType, StatsOp, RestrictValueType
 
-BIT_WIDTH=18
+BIT_WIDTH=2
 
 class CustomFloatScaling(ExtendedInjector):
     """
