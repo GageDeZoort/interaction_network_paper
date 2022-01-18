@@ -26,13 +26,13 @@ def train(args, model, device, train_loader, optimizer, epoch):
         optimizer.zero_grad()
         output = model(data.x, data.edge_index, data.edge_attr)
         y, output = data.y, output.squeeze(1)
-        loss = F.binary_cross_entropy(tensor_bound(output), y, reduction='mean')
+        loss = F.binary_cross_entropy_with_logits(output, y, reduction='mean')
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx, len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
+            #print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+            #    epoch, batch_idx, len(train_loader.dataset),
+            #    100. * batch_idx / len(train_loader), loss.item()))
             if args.dry_run:
                 break
         losses.append(loss.item())
@@ -47,7 +47,7 @@ def validate(model, device, val_loader):
         data = data.to(device)
         output = model(data.x, data.edge_index, data.edge_attr)
         y, output = data.y, output.squeeze()
-        loss = F.binary_cross_entropy(tensor_bound(output), y, reduction='mean').item()
+        loss = F.binary_cross_entropy_with_logits(output, y, reduction='mean').item()
         
         # define optimal threshold (thld) where TPR = TNR 
         diff, opt_thld, opt_acc = 100, 0, 0
@@ -88,7 +88,7 @@ def test(model, device, test_loader, thld=0.5):
             data = data.to(device)
             output = model(data.x, data.edge_index, data.edge_attr)
             out_thld = output > thld
-            out_thresh = torch.cat((out_thresh, out_thld))
+            out_thresh = torch.cat((out_thresh, output))
             true = torch.cat((true, data.y))
             #print(data.y, out_thld)
             #auc = roc_auc_score(data.y, out_thld)
@@ -179,9 +179,10 @@ def main():
     
     IDs = np.arange(n_graphs)
     np.random.shuffle(IDs)
-    partition = {'train': graph_files[IDs[:1000]],
-                 'test':  graph_files[IDs[1000:1400]],
-                 'val': graph_files[IDs[1400:1500]]}
+    print(n_graphs)
+    partition = {'train': graph_files[IDs[:22000]],
+                 'test':  graph_files[IDs[22000:26000]],
+                 'val': graph_files[IDs[26000:28000]]}
     
     params = {'batch_size': 1, 'shuffle': True, 'num_workers': 6}
     
