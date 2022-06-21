@@ -12,6 +12,10 @@ from torch.optim.lr_scheduler import StepLR
 
 from models.interaction_network import InteractionNetwork
 from models.dataset import GraphDataset
+from sklearn.metrics import roc_auc_score
+
+def tensor_bound(inp):
+    return torch.clamp(inp, min=0, max=1)
 
 def train(args, model, device, train_loader, optimizer, epoch):
     model.train()
@@ -22,13 +26,13 @@ def train(args, model, device, train_loader, optimizer, epoch):
         optimizer.zero_grad()
         output = model(data.x, data.edge_index, data.edge_attr)
         y, output = data.y, output.squeeze(1)
-        loss = F.binary_cross_entropy(output, y, reduction='mean')
+        loss = F.binary_cross_entropy_with_logits(output, y, reduction='mean')
         loss.backward()
         optimizer.step()
         if batch_idx % args.log_interval == 0:
-            print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
-                epoch, batch_idx, len(train_loader.dataset),
-                100. * batch_idx / len(train_loader), loss.item()))
+            #print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}'.format(
+            #    epoch, batch_idx, len(train_loader.dataset),
+            #    100. * batch_idx / len(train_loader), loss.item()))
             if args.dry_run:
                 break
         losses.append(loss.item())
@@ -43,18 +47,27 @@ def validate(model, device, val_loader):
         data = data.to(device)
         output = model(data.x, data.edge_index, data.edge_attr)
         y, output = data.y, output.squeeze()
-        loss = F.binary_cross_entropy(output, y, reduction='mean').item()
+        loss = F.binary_cross_entropy_with_logits(output, y, reduction='mean').item()
         
         # define optimal threshold (thld) where TPR = TNR 
         diff, opt_thld, opt_acc = 100, 0, 0
         best_tpr, best_tnr = 0, 0
-        for thld in np.arange(0.001, 0.5, 0.001):
+        for thld in np.arange(0.15, 0.5, 0.001):
             TP = torch.sum((y==1) & (output>thld)).item()
             TN = torch.sum((y==0) & (output<thld)).item()
             FP = torch.sum((y==0) & (output>thld)).item()
             FN = torch.sum((y==1) & (output<thld)).item()
+            #print(thld, TP, TN, FP, FN)
             acc = (TP+TN)/(TP+TN+FP+FN)
-            TPR, TNR = TP/(TP+FN), TN/(TN+FP)
+            #TPR, TNR = TP/(TP+FN), TN/(TN+FP)
+            #TPR=TP/(TP+FN)
+            TPR=0
+            if (TP+FN) > 0:
+                TPR = TP/(TP+FN)
+            #TNR=TN/(TN+FP)
+            TNR=0
+            if (TN+FP) > 0:
+                TNR=TN/(TN+FP)
             delta = abs(TPR-TNR)
             if (delta < diff): 
                 diff, opt_thld, opt_acc = delta, thld, acc
@@ -68,10 +81,17 @@ def validate(model, device, val_loader):
 def test(model, device, test_loader, thld=0.5):
     model.eval()
     losses, accs = [], []
+    true = torch.Tensor()
+    out_thresh = torch.Tensor()
     with torch.no_grad():
         for batch_idx, data in enumerate(test_loader):
             data = data.to(device)
             output = model(data.x, data.edge_index, data.edge_attr)
+            out_thld = output > thld
+            out_thresh = torch.cat((out_thresh, output))
+            true = torch.cat((true, data.y))
+            #print(data.y, out_thld)
+            #auc = roc_auc_score(data.y, out_thld)
             TP = torch.sum((data.y==1).squeeze() & 
                            (output>thld).squeeze()).item()
             TN = torch.sum((data.y==0).squeeze() & 
@@ -81,14 +101,18 @@ def test(model, device, test_loader, thld=0.5):
             FN = torch.sum((data.y==1).squeeze() & 
                            (output<thld).squeeze()).item()            
             acc = (TP+TN)/(TP+TN+FP+FN)
-            loss = F.binary_cross_entropy(output.squeeze(1), data.y, 
+            loss = F.binary_cross_entropy(tensor_bound(output.squeeze(1)), data.y, 
                                           reduction='mean').item()
             accs.append(acc)
             losses.append(loss)
             #print(f"acc={TP+TN}/{TP+TN+FP+FN}={acc}")
 
+    #print(true)
+    #print(out_thresh)
+    auc = roc_auc_score(true, out_thresh)
     print('...test loss: {:.4f}\n...test accuracy: {:.4f}'
           .format(np.mean(losses), np.mean(accs)))
+    print("test auc: ", auc)
     return np.mean(losses), np.mean(accs)
 
 def main():
@@ -155,9 +179,10 @@ def main():
     
     IDs = np.arange(n_graphs)
     np.random.shuffle(IDs)
-    partition = {'train': graph_files[IDs[:1000]],
-                 'test':  graph_files[IDs[1000:1400]],
-                 'val': graph_files[IDs[1400:1500]]}
+    print(n_graphs)
+    partition = {'train': graph_files[IDs[:22000]],
+                 'test':  graph_files[IDs[22000:26000]],
+                 'val': graph_files[IDs[26000:28000]]}
     
     params = {'batch_size': 1, 'shuffle': True, 'num_workers': 6}
     
